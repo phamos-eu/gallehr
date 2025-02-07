@@ -18,14 +18,14 @@ def get_column():
 			"fieldname": "name",
 			"fieldtype": "Link",
 			"options": "Purchase Invoice",
-			"width": 160
+			"width": 180
 		},
 		{
 			"label": _("Payment Request"),
 			"fieldname": "payment_request",
 			"fieldtype": "Link",
 			"options": "Payment Request",
-			"width": 160
+			"width": 180
 		},
 		{
 			"label": _("Invoice Amount"),
@@ -44,8 +44,8 @@ def get_column():
 
 def get_data(filters):
 	PurchaseInvoice = frappe.qb.DocType("Purchase Invoice")
-
-	data = (
+	
+	query = (
 		frappe.qb.from_(PurchaseInvoice)
 		.select(
 			PurchaseInvoice.name,
@@ -55,7 +55,51 @@ def get_data(filters):
 		.where(PurchaseInvoice.docstatus == 1)
 		.orderby(PurchaseInvoice.creation, order=frappe.qb.asc)
 		.orderby(PurchaseInvoice.name, order=frappe.qb.asc)
-		.run(as_dict=1, debug=1)
 	)
 
-	return data
+	if filters.supplier:
+		query = query.where(PurchaseInvoice.supplier == filters.supplier)
+
+	if filters.purchase_invoices_with_payment_requests:
+		PaymentRequest = frappe.qb.DocType("Payment Request")
+		data = (
+			query
+			.inner_join(PaymentRequest)
+			.on(PaymentRequest.reference_name == PurchaseInvoice.name)
+			.select(PaymentRequest.name.as_("payment_request"))
+			.where(PaymentRequest.docstatus == 1)
+			.where(PaymentRequest.reference_doctype == "Purchase Invoice")
+		).run(as_dict=True)
+
+		if filters.supplier:
+			query = query.where(PaymentRequest.party_type == "Supplier").where(PaymentRequest.party == filters.supplier)
+
+		
+		if filters.nested_report:
+			report_data = []
+			seen_invoices = set()
+
+
+			for entry in data:
+				invoice_key = (entry["name"], entry["grand_total"], entry["due_date"])
+				
+				if invoice_key not in seen_invoices:
+					report_data.append({
+						"name": entry["name"],
+						"grand_total": entry["grand_total"],
+						"due_date": entry["due_date"],
+						"indent": 0
+					})
+					seen_invoices.add(invoice_key)
+
+				report_data.append({
+					"payment_request": entry["payment_request"],
+					"indent": 1
+				})
+
+			return report_data
+		else:
+			return data
+
+	else:
+		return query.run(as_dict=True)
