@@ -12,3 +12,10 @@ doctype_js = {
     # "Sales Order" : "public/js/sales_order.js",
     "Web Form" : "public/js/web_form.js",
 }
+fixtures = [
+	{"dt": "Print Format", "filters": 
+  		[
+        	["module", "=", "Gallehr"]
+        ]
+    }
+]
