@@ -15,10 +15,10 @@
  "doctype": "Report",
  "filters": [],
  "idx": 0,
- "is_standard": "Yes",
+ "is_standard": "No",
  "letter_head": "Gallehr 2022",
  "letterhead": null,
- "modified": "2025-05-08 14:31:48.023235",
+ "modified": "2025-05-08 14:31:48.023239",
  "modified_by": "Administrator",
  "module": "Gallehr",
  "name": "Test Auftr\u00e4ge",
@@ -27,7 +27,7 @@
  "ref_doctype": "Sales Order",
  "report_name": "Test Auftr\u00e4ge",
  "report_script": "def execute(filters=None):\r\n    # Define columns for the report\r\n    columns = get_columns()\r\n    \r\n    # Fetch data with debugging\r\n    data = get_data(filters)\r\n    \r\n    # Print the data to debug\r\n    print(\"Data fetched from SQL query:\", data)\r\n    \r\n    return columns, data\r\n\r\ndef get_columns():\r\n    return [\r\n        {\"label\": \"Sales Order\", \"fieldname\": \"sales_order\", \"fieldtype\": \"Link\", \"options\": \"Sales Order\", \"width\": 150},\r\n        {\"label\": \"Customer\", \"fieldname\": \"customer\", \"fieldtype\": \"Link\", \"options\": \"Customer\", \"width\": 150},\r\n        {\"label\": \"Order Date\", \"fieldname\": \"order_date\", \"fieldtype\": \"Date\", \"width\": 100},\r\n        {\"label\": \"Status\", \"fieldname\": \"status\", \"fieldtype\": \"Data\", \"width\": 100},\r\n        {\"label\": \"Total Amount\", \"fieldname\": \"total_amount\", \"fieldtype\": \"Currency\", \"width\": 120},\r\n    ]\r\n\r\ndef get_data(filters):\r\n    # Handle filters\r\n    conditions = \"\"\r\n    if filters:\r\n        filters = frappe.parse_json(filters)\r\n        if filters.get('date'):\r\n            conditions += \" AND so.transaction_date >= '{}'\".format(filters['date'])\r\n    \r\n    # Define SQL query\r\n    query = \"\"\"\r\n        SELECT\r\n            so.name AS sales_order,\r\n            so.customer AS customer,\r\n            so.transaction_date AS order_date,\r\n            so.status AS status,\r\n            so.base_grand_total AS total_amount\r\n        FROM\r\n            `tabSales Order` so\r\n        WHERE\r\n            so.status NOT IN ('Cancelled', 'Closed', 'Completed')\r\n            {conditions}\r\n        ORDER BY\r\n            so.transaction_date DESC\r\n    \"\"\".format(conditions=conditions)\r\n    \r\n    # Print the query to debug\r\n    print(\"Executing SQL Query:\", query)\r\n    \r\n    # Execute SQL query\r\n    data = frappe.db.sql(query, as_dict=True)\r\n    \r\n    # Print the data fetched from the SQL query for debugging\r\n    print(\"Data fetched from SQL query:\", data)\r\n    \r\n    return data\r\n",
- "report_type": "Query Report",
+ "report_type": "Script Report",
  "roles": [
   {
    "role": "Maintenance User"
