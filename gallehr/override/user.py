@@ -11,7 +11,6 @@ from frappe.utils import cint
 def update_password(
 	new_password: str, logout_all_sessions: int = 0, key: str | None = None, old_password: str | None = None
 ):
-    frappe.log_error("update password working!")
     """Update password for the current user.
 
     Args:
