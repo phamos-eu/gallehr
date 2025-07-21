@@ -14,8 +14,13 @@ doctype_js = {
 }
 fixtures = [
 	{"dt": "Print Format", "filters": 
-  		[
-        	["module", "=", "Gallehr"]
-        ]
-    }
+		[
+			["module", "=", "Gallehr"]
+		]
+	},
+	{"dt": "Translation", "filters": 
+		[
+            ["source_text", "in", ["Left"]]
+		]
+	}
 ]
