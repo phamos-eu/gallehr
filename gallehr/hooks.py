@@ -24,3 +24,7 @@ fixtures = [
 		]
 	}
 ]
+
+# override_whitelisted_methods = {
+# 	"frappe.core.doctype.user.user.update_password": "gallehr.override.user.update_password"
+# }
