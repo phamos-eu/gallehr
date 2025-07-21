@@ -14,12 +14,17 @@ doctype_js = {
 }
 fixtures = [
 	{"dt": "Print Format", "filters": 
-  		[
-        	["module", "=", "Gallehr"]
-        ]
-    }
+		[
+			["module", "=", "Gallehr"]
+		]
+	},
+	{"dt": "Translation", "filters": 
+		[
+            ["source_text", "in", ["Left"]]
+		]
+	}
 ]
 
-override_whitelisted_methods = {
-	"frappe.core.doctype.user.user.update_password": "gallehr.override.user.update_password"
-}
+# override_whitelisted_methods = {
+# 	"frappe.core.doctype.user.user.update_password": "gallehr.override.user.update_password"
+# }
