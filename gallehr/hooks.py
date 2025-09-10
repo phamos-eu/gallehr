@@ -17,11 +17,6 @@ fixtures = [
 		[
 			["module", "=", "Gallehr"]
 		]
-	},
-	{"dt": "Translation", "filters": 
-		[
-            ["source_text", "in", ["Left"]]
-		]
 	}
 ]
 
