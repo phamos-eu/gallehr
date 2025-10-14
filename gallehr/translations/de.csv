@@ -1,3 +1,18 @@
 Links,Ausgeschieden,Employee
 Left,Ausgeschieden,Employee
 Left,Ausgeschieden,
+Order Date,Bestelldatum,
+Date,Datum,
+Payment Due Date,Zahlungsstichtag,
+Invoice,Rechnung,
+Project,Projekt,
+Order,Auftrag,
+Description,Beschreibung,
+Supplier No. with you,Lieferantennr. bei Ihnen,
+Amount EUR,Betrag EUR,
+Sales Tax,VAT,
+Unless otherwise stated,Sofern nicht anders angegeben
+the delivery or service date corresponds to the invoice date.,entspricht das Liefer- bzw. Leistungsdatum dem Rechnungsdatum.,
+Please transfer the invoice amount,Bitte überweisen Sie den Rechnungsbetrag
+quoting the purpose,unter Angabe des Verwendungszwecks,
+to the account below.,auf das unten angegebene Konto.,
