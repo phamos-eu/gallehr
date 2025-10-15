@@ -16,8 +16,18 @@ fixtures = [
 	{"dt": "Print Format", "filters": 
 		[
 			["module", "=", "Gallehr"],
-            ["standard", "!=", "Yes"]
+			["standard", "!=", "Yes"]
 		
+		]
+	},
+	{"dt": "Custom Field", "filters":
+		[
+			["module", "=", "Gallehr"]
+		]
+	},
+	{"dt": "Property Setter", "filters":
+		[
+			["module", "=", "Gallehr"]
 		]
 	}
 ]
