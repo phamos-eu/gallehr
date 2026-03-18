@@ -32,6 +32,7 @@ fixtures = [
 	}
 ]
 
-# override_whitelisted_methods = {
-# 	"frappe.core.doctype.user.user.update_password": "gallehr.override.user.update_password"
-# }
+override_whitelisted_methods = {
+	# Use Gallehr get_project_name when Link field calls search_link for Project
+	"frappe.desk.search.search_link": "gallehr.override.search.search_link",
+}
