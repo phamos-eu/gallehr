@@ -1,8 +1,3 @@
-# Copyright (c) 2025, Gallehr and contributors
-# For license information, please see license.txt
-
-"""Helper for Option A: project shared across companies (custom_shared_across_companies + allowed_companies)."""
-
 import frappe
 
 
@@ -20,7 +15,6 @@ def project_allowed_for_company(project_name: str, company: str) -> bool:
 	if company == project_company:
 		return True
 
-	# Custom field may not exist if gallehr fixtures not yet applied
 	if not frappe.db.has_column("Project", "custom_shared_across_companies"):
 		return False
 
@@ -55,7 +49,7 @@ def get_project_names_allowed_for_company(company: str, status_filter: bool = Tr
 	else:
 		primary = frappe.get_all("Project", filters={"company": company}, pluck="name")
 
-	# Projects shared with this company (custom field + child table)
+	# Projects shared with this company
 	if not frappe.db.has_column("Project", "custom_shared_across_companies"):
 		return primary
 

@@ -1,10 +1,7 @@
-# Copyright (c) 2025, Gallehr and contributors
-# For license information, please see license.txt
-
 """
 Override AccountsController.validate_company so that for the Project dimension
 we allow a project when the document company equals the project's company OR
-the project is shared and the document company is in allowed_companies (Option A).
+the project is shared and the document company is in allowed_companies.
 """
 
 import frappe
@@ -47,5 +44,5 @@ def patch_accounts_controller():
 	accounts_controller.AccountsController.validate_company = _patched_validate_company
 
 
-# Apply patch when this module is loaded (gallehr app loads after erpnext)
+# Apply patch when this module is loaded
 patch_accounts_controller()

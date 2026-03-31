@@ -1,12 +1,6 @@
-# Copyright (c) 2025, Gallehr and contributors
-# For license information, please see license.txt
-
 """
 Wrap search_link so that when the Link field requests Project options, we use
-Gallehr's get_project_name (shared-across-companies). This covers:
-- Selling: set_query returns query="erpnext.controllers.queries.get_project_name" + filters.
-- Buying (PO, PI, etc.): set_query returns only filters={ company } (no query).
-We substitute our query whenever doctype is Project and company is in filters.
+Gallehr's get_project_name (shared-across-companies).
 """
 
 import json
@@ -15,7 +9,6 @@ import frappe
 from frappe.desk.search import build_for_autosuggest
 from frappe.desk.search import search_widget as _search_widget
 
-# Method we use for Project link (Option A: shared across companies)
 PROJECT_QUERY_ORIGINAL = "erpnext.controllers.queries.get_project_name"
 PROJECT_QUERY_GALLEHR = "gallehr.override.queries.get_project_name"
 
@@ -28,7 +21,7 @@ def _filters_has_company(filters) -> bool:
 		for f in filters:
 			if not isinstance(f, (list, tuple)) or len(f) < 2:
 				continue
-			# [doctype, field, op, value] -> field at 1; [field, op, value] -> field at 0
+
 			field = f[1] if len(f) >= 4 else f[0]
 			if field == "company":
 				return True

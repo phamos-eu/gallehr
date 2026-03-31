@@ -1,9 +1,6 @@
-# Copyright (c) 2025, Gallehr and contributors
-# For license information, please see license.txt
-
 """
 Override get_project_name so the project dropdown shows projects allowed for the
-document's company (Option A: primary company or shared with company in allowed_companies).
+document's company.
 """
 
 import frappe
@@ -21,7 +18,7 @@ from gallehr.project_sharing import get_project_names_allowed_for_company
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_project_name(doctype, txt, searchfield, start, page_len, filters):
-	"""Return projects allowed for the document's company (primary or shared)."""
+	"""Return projects allowed for the document's company."""
 	if not (filters and filters.get("company")):
 		return _original_get_project_name(doctype, txt, searchfield, start, page_len, filters)
 
@@ -31,7 +28,7 @@ def get_project_name(doctype, txt, searchfield, start, page_len, filters):
 		return []
 
 	# Show all projects allowed for this company; do not filter by customer so that
-	# shared projects appear regardless of the form's customer (e.g. Sales Invoice customer).
+	# shared projects appear regardless of the form's customer.
 	proj = qb.DocType("Project")
 	qb_filter_and_conditions = [proj.name.isin(allowed_names)]
 
