@@ -77,8 +77,8 @@ function processReport(columns, rows, jahr) {
 	var prognoseMap = {};
 
 	(rows || []).forEach(function (row) {
-		var monat = row[0];
-		var yearVal = row[1];
+		var monat = row.monat !== undefined ? row.monat : row[0];
+		var yearVal = row.jahr !== undefined ? row.jahr : row[1];
 		if (String(yearVal) === String(jahr) && MONTHS.indexOf(monat) !== -1) {
 			monthlyRows.push(row);
 		} else if (!yearVal && monat && monat !== '---') {
@@ -91,7 +91,7 @@ function processReport(columns, rows, jahr) {
 		Object.keys(prognoseMap).forEach(function (k) {
 			if (k.indexOf(label) !== -1) { found = prognoseMap[k]; }
 		});
-		return found ? (found[2] || 0) : 0;
+		return found ? (found.prognose_eur !== undefined ? found.prognose_eur : (found[2] || 0)) : 0;
 	}
 
 	function pzahl(label) {
@@ -99,7 +99,7 @@ function processReport(columns, rows, jahr) {
 		Object.keys(prognoseMap).forEach(function (k) {
 			if (k.indexOf(label) !== -1) { found = prognoseMap[k]; }
 		});
-		return found ? (found[3] || 0) : 0;
+		return found ? (found.prognose_zahl !== undefined ? found.prognose_zahl : (found[3] || 0)) : 0;
 	}
 
 	var liq = peur('Liquiditaet aktuell');
@@ -119,14 +119,16 @@ function processReport(columns, rows, jahr) {
 	$('#fd-kpi-row').html(kpiHtml);
 
 	var activeMonths = monthlyRows.filter(function (r) {
-		return (r[4] || 0) > 0 || (r[5] || 0) > 0;
+		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
+		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
+		return ein > 0 || aus > 0;
 	});
 
-	var labels = activeMonths.map(function (r) { return r[0]; });
-	var einnahmen = activeMonths.map(function (r) { return r[4] || 0; });
-	var ausgaben = activeMonths.map(function (r) { return r[5] || 0; });
-	var liquiditaet = activeMonths.map(function (r) { return r[7] || 0; });
-	var burnrate = activeMonths.map(function (r) { return r[11] || 0; });
+	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
+	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
+	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
+	var liquiditaet = activeMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
+	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[11] || 0); });
 
 	buildGVChart(labels, einnahmen, ausgaben, liquiditaet);
 	buildBurnChart(labels, burnrate);
@@ -283,11 +285,13 @@ function loadOutstanding() {
 			var invoicedNotPaid = 0;
 
 			rows.forEach(function (row) {
-				var type = row[10];
+				var type = row.type !== undefined ? row.type : row[10];
+				var unbilledAmt = row.unbilled_amount !== undefined ? row.unbilled_amount : (row[7] || 0);
+				var invoicedAmt = row.invoice_outstanding !== undefined ? row.invoice_outstanding : (row[8] || 0);
 				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') {
-					unbilled += (row[7] || 0);
+					unbilled += unbilledAmt;
 				} else if (type === 'Invoiced Not Paid') {
-					invoicedNotPaid += (row[8] || 0);
+					invoicedNotPaid += invoicedAmt;
 				}
 			});
 
