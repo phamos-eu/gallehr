@@ -1,0 +1,68 @@
+<div class="finanz-dashboard">
+  <div class="fd-header">
+    <h4 class="fd-title">Finanz Dashboard</h4>
+    <button class="btn btn-sm btn-default fd-refresh-btn">
+      <i class="ti ti-refresh"></i> Aktualisieren
+    </button>
+  </div>
+
+  <div class="fd-filters">
+    <div class="fd-fg">
+      <label>Jahr</label>
+      <select id="fd-jahr" class="form-control form-control-sm">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+      </select>
+    </div>
+    <div class="fd-fg">
+      <label>Start Liquidität (Brutto)</label>
+      <input type="number" id="fd-liq" class="form-control form-control-sm" value="0" placeholder="z.B. 448523">
+    </div>
+    <div class="fd-fg">
+      <label>Angebotsumwandlung %</label>
+      <input type="number" id="fd-umwandlung" class="form-control form-control-sm" value="30">
+    </div>
+    <div class="fd-fg">
+      <label>Burnrate/Tag (manuell)</label>
+      <input type="number" id="fd-burnrate" class="form-control form-control-sm" placeholder="leer = auto">
+    </div>
+    <button class="btn btn-sm btn-primary fd-apply-btn">Anwenden</button>
+  </div>
+
+  <div class="fd-kpi-row" id="fd-kpi-row"></div>
+
+  <div class="fd-charts-row">
+    <div class="fd-chart-box fd-chart-large">
+      <div class="fd-chart-title">G&amp;V — Einnahmen / Ausgaben / Liquidität</div>
+      <div class="fd-legend" id="fd-legend-gv"></div>
+      <div class="fd-chart-wrap">
+        <canvas id="fd-chart-gv" role="img" aria-label="G&V Monatsverlauf">Monatliche Einnahmen, Ausgaben und Liquidität.</canvas>
+      </div>
+    </div>
+    <div class="fd-chart-box fd-chart-small">
+      <div class="fd-chart-title">Burnrate / Monat</div>
+      <div class="fd-legend" id="fd-legend-burn"></div>
+      <div class="fd-chart-wrap">
+        <canvas id="fd-chart-burn" role="img" aria-label="Monatliche Burnrate">Burnrate pro Monat.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="fd-bottom-row">
+    <div class="fd-info-box">
+      <div class="fd-info-title">
+        <span>Offene Angebote</span>
+        <a href="/app/quotation" target="_blank" class="fd-link">→ Alle anzeigen</a>
+      </div>
+      <div id="fd-angebote-rows"><div class="fd-loading">Laden...</div></div>
+    </div>
+    <div class="fd-info-box">
+      <div class="fd-info-title">
+        <span>Outstanding Aufträge</span>
+        <a href="/app/query-report/Outstanding%20Report" target="_blank" class="fd-link">→ Zum Bericht</a>
+      </div>
+      <div id="fd-outstanding-rows"><div class="fd-loading">Laden...</div></div>
+    </div>
+  </div>
+</div>
