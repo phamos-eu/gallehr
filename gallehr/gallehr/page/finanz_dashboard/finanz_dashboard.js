@@ -16,7 +16,7 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 
 	// Load Chart.js in background - charts render when ready
 	var script = document.createElement('script');
-	script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+	script.src = '/assets/gallehr/js/chart.umd.min.js';
 	script.onload = function () {
 		window.fd_chart_js_loaded = true;
 		// If data already loaded, render charts now
