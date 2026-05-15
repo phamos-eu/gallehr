@@ -8,7 +8,11 @@
  "owner": "Administrator",
  "page_name": "finanz-dashboard",
  "restrict_to_domain": "",
- "roles": [],
+ "roles": [
+  {
+   "role": "Dashboard Manager"
+  }
+ ],
  "system_page": 0,
  "title": "Finanz Dashboard"
 }
