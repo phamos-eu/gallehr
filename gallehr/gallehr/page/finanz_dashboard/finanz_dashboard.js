@@ -7,18 +7,40 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 
 	$(frappe.render_template('finanz_dashboard', {})).appendTo(page.body);
 
+	window.fd_charts = {};
+	window.fd_chart_js_loaded = false;
+
+	// Bind events and load data immediately - dont wait for Chart.js
+	bindEvents();
+	loadAll();
+
+	// Load Chart.js in background - charts render when ready
 	var script = document.createElement('script');
 	script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
 	script.onload = function () {
-		window.fd_charts = {};
-		bindEvents();
-		loadAll();
+		window.fd_chart_js_loaded = true;
+		// If data already loaded, render charts now
+		if (window.fd_chart_data) {
+			buildGVChart(
+				window.fd_chart_data.labels,
+				window.fd_chart_data.einnahmen,
+				window.fd_chart_data.ausgaben,
+				window.fd_chart_data.liquiditaet
+			);
+			buildBurnChart(window.fd_chart_data.labels, window.fd_chart_data.burnrate);
+		}
+	};
+	script.onerror = function () {
+		// CDN blocked - show message in chart areas
+		$('#fd-chart-gv').closest('.fd-chart-box').append(
+			'<div class="fd-loading" style="text-align:center;padding:20px;">Chart.js konnte nicht geladen werden (CSP blockiert CDN)</div>'
+		);
 	};
 	document.head.appendChild(script);
 };
 
 function bindEvents() {
-	$('.fd-apply-btn, .fd-refresh-btn').on('click', function () {
+	$(document).on('click', '.fd-apply-btn, .fd-refresh-btn', function () {
 		loadAll();
 	});
 }
@@ -130,8 +152,13 @@ function processReport(columns, rows, jahr) {
 	var liquiditaet = activeMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
 	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[11] || 0); });
 
-	buildGVChart(labels, einnahmen, ausgaben, liquiditaet);
-	buildBurnChart(labels, burnrate);
+	// Store chart data globally so it can be rendered when Chart.js loads
+	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
+
+	if (window.fd_chart_js_loaded) {
+		buildGVChart(labels, einnahmen, ausgaben, liquiditaet);
+		buildBurnChart(labels, burnrate);
+	}
 }
 
 function kpiCard(label, value, sub, borderColor, valueColor) {
@@ -286,8 +313,8 @@ function loadOutstanding() {
 
 			rows.forEach(function (row) {
 				var type = row.type !== undefined ? row.type : row[10];
-				var unbilledAmt = row.unbilled_amount !== undefined ? row.unbilled_amount : (row[7] || 0);
-				var invoicedAmt = row.invoice_outstanding !== undefined ? row.invoice_outstanding : (row[8] || 0);
+				var unbilledAmt = row.unbilled_netto !== undefined ? row.unbilled_netto : (row[7] || 0);
+				var invoicedAmt = row.invoice_outstanding_netto !== undefined ? row.invoice_outstanding_netto : (row[8] || 0);
 				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') {
 					unbilled += unbilledAmt;
 				} else if (type === 'Invoiced Not Paid') {
