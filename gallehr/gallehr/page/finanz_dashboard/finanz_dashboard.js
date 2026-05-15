@@ -1,4 +1,4 @@
-frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
+frappe.pages['finanz-dashboard'].on_page_load = function(wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: 'Finanz Dashboard',
@@ -10,37 +10,23 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 	window.fd_charts = {};
 	window.fd_chart_js_loaded = false;
 
-	// Bind events and load data immediately - dont wait for Chart.js
 	bindEvents();
 	loadAll();
 
-	// Load Chart.js in background - charts render when ready
 	var script = document.createElement('script');
 	script.src = '/assets/gallehr/js/chart.umd.min.js';
-	script.onload = function () {
+	script.onload = function() {
 		window.fd_chart_js_loaded = true;
-		// If data already loaded, render charts now
 		if (window.fd_chart_data) {
-			buildGVChart(
-				window.fd_chart_data.labels,
-				window.fd_chart_data.einnahmen,
-				window.fd_chart_data.ausgaben,
-				window.fd_chart_data.liquiditaet
-			);
+			buildGVChart(window.fd_chart_data.labels, window.fd_chart_data.einnahmen, window.fd_chart_data.ausgaben, window.fd_chart_data.liquiditaet);
 			buildBurnChart(window.fd_chart_data.labels, window.fd_chart_data.burnrate);
 		}
-	};
-	script.onerror = function () {
-		// CDN blocked - show message in chart areas
-		$('#fd-chart-gv').closest('.fd-chart-box').append(
-			'<div class="fd-loading" style="text-align:center;padding:20px;">Chart.js konnte nicht geladen werden (CSP blockiert CDN)</div>'
-		);
 	};
 	document.head.appendChild(script);
 };
 
 function bindEvents() {
-	$(document).on('click', '.fd-apply-btn, .fd-refresh-btn', function () {
+	$(document).on('click', '.fd-apply-btn, .fd-refresh-btn', function() {
 		loadAll();
 	});
 }
@@ -86,7 +72,7 @@ function loadReport() {
 			filters: filters,
 			ignore_prepared_report: true
 		},
-		callback: function (r) {
+		callback: function(r) {
 			if (!r.message) return;
 			processReport(r.message.columns, r.message.result, filters.jahr);
 		}
@@ -94,11 +80,11 @@ function loadReport() {
 }
 
 function processReport(columns, rows, jahr) {
-	var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+	var MONTHS = ['Jan','Feb','Mar','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 	var monthlyRows = [];
 	var prognoseMap = {};
 
-	(rows || []).forEach(function (row) {
+	(rows || []).forEach(function(row) {
 		var monat = row.monat !== undefined ? row.monat : row[0];
 		var yearVal = row.jahr !== undefined ? row.jahr : row[1];
 		if (String(yearVal) === String(jahr) && MONTHS.indexOf(monat) !== -1) {
@@ -110,7 +96,7 @@ function processReport(columns, rows, jahr) {
 
 	function peur(label) {
 		var found = null;
-		Object.keys(prognoseMap).forEach(function (k) {
+		Object.keys(prognoseMap).forEach(function(k) {
 			if (k.indexOf(label) !== -1) { found = prognoseMap[k]; }
 		});
 		return found ? (found.prognose_eur !== undefined ? found.prognose_eur : (found[2] || 0)) : 0;
@@ -118,41 +104,48 @@ function processReport(columns, rows, jahr) {
 
 	function pzahl(label) {
 		var found = null;
-		Object.keys(prognoseMap).forEach(function (k) {
+		Object.keys(prognoseMap).forEach(function(k) {
 			if (k.indexOf(label) !== -1) { found = prognoseMap[k]; }
 		});
 		return found ? (found.prognose_zahl !== undefined ? found.prognose_zahl : (found[3] || 0)) : 0;
 	}
 
+	var ist = peur('Umsatz Ist');
+	var soll = peur('Umsatz Soll');
 	var liq = peur('Liquiditaet aktuell');
 	var tage = pzahl('Tage ohne');
 	var monate = pzahl('Monate ohne');
-	var soll = peur('Umsatz Soll');
 	var realLuecke = peur('Reale Umsatz');
 	var vorrLuecke = peur('Vorraussichtliche');
 
-	var kpiHtml = [
-		kpiCard('Liquidität aktuell', fmt(liq), 'Netto', 'blue', ''),
-		kpiCard('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage', fmtN(monate, 1) + ' Monate', 'amber', 'amber'),
+	// ROW 1: Umsatz Ist, Umsatz Soll, Liquidität
+	var row1Html = [
+		kpiCard('Umsatz Ist (YTD)', fmt(ist), 'Einnahmen seit Jahresbeginn', 'green', ''),
 		kpiCard('Umsatz Soll', fmt(soll), 'Netto / Jahr', 'purple', ''),
+		kpiCard('Liquidität aktuell', fmt(liq), 'Netto', 'blue', '')
+	].join('');
+	$('#fd-kpi-row-1').html(row1Html);
+
+	// ROW 2: Tage ohne Zahlung, Reale Lücke, Vorr. Lücke
+	var row2Html = [
+		kpiCard('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage', fmtN(monate, 1) + ' Monate', 'amber', 'amber'),
 		kpiCard('Reale Umsatzlücke', fmt(realLuecke), 'Soll − Ist − Outstanding', 'red', realLuecke > 0 ? 'red' : 'green'),
 		kpiCard('Vorr. Umsatzlücke', fmt(vorrLuecke), 'nach Angebotsumwandlung', vorrLuecke > 0 ? 'red' : 'green', vorrLuecke > 0 ? 'red' : 'green')
 	].join('');
-	$('#fd-kpi-row').html(kpiHtml);
+	$('#fd-kpi-row-2').html(row2Html);
 
-	var activeMonths = monthlyRows.filter(function (r) {
+	var activeMonths = monthlyRows.filter(function(r) {
 		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
 		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
 		return ein > 0 || aus > 0;
 	});
 
-	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
-	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
-	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
-	var liquiditaet = activeMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
-	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[11] || 0); });
+	var labels = activeMonths.map(function(r) { return r.monat !== undefined ? r.monat : r[0]; });
+	var einnahmen = activeMonths.map(function(r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
+	var ausgaben = activeMonths.map(function(r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
+	var liquiditaet = activeMonths.map(function(r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
+	var burnrate = activeMonths.map(function(r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[11] || 0); });
 
-	// Store chart data globally so it can be rendered when Chart.js loads
 	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
 
 	if (window.fd_chart_js_loaded) {
@@ -173,21 +166,19 @@ function buildGVChart(labels, einnahmen, ausgaben, liquiditaet) {
 	if (window.fd_charts && window.fd_charts.gv) { window.fd_charts.gv.destroy(); }
 	var ctx = document.getElementById('fd-chart-gv');
 	if (!ctx) return;
-
 	$('#fd-legend-gv').html(
 		'<span><span class="fd-dot" style="background:#639922"></span>Einnahmen</span>' +
 		'<span><span class="fd-dot" style="background:#E24B4A"></span>Ausgaben</span>' +
 		'<span><span class="fd-dot" style="background:#378ADD"></span>Liquidität</span>'
 	);
-
 	window.fd_charts.gv = new Chart(ctx, {
 		type: 'line',
 		data: {
 			labels: labels,
 			datasets: [
 				{ label: 'Einnahmen', data: einnahmen, borderColor: '#639922', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false, borderDash: [] },
-				{ label: 'Ausgaben', data: ausgaben, borderColor: '#E24B4A', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false, borderDash: [4, 3] },
-				{ label: 'Liquidität', data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8, 3] }
+				{ label: 'Ausgaben', data: ausgaben, borderColor: '#E24B4A', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false, borderDash: [4,3] },
+				{ label: 'Liquidität', data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8,3] }
 			]
 		},
 		options: chartOptions()
@@ -198,18 +189,12 @@ function buildBurnChart(labels, burnrate) {
 	if (window.fd_charts && window.fd_charts.burn) { window.fd_charts.burn.destroy(); }
 	var ctx = document.getElementById('fd-chart-burn');
 	if (!ctx) return;
-
-	$('#fd-legend-burn').html(
-		'<span><span class="fd-dot" style="background:#534AB7"></span>Burnrate/M</span>'
-	);
-
+	$('#fd-legend-burn').html('<span><span class="fd-dot" style="background:#534AB7"></span>Burnrate/M</span>');
 	window.fd_charts.burn = new Chart(ctx, {
 		type: 'line',
 		data: {
 			labels: labels,
-			datasets: [
-				{ label: 'Burnrate/M', data: burnrate, borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true }
-			]
+			datasets: [{ label: 'Burnrate/M', data: burnrate, borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true }]
 		},
 		options: chartOptions()
 	});
@@ -217,34 +202,18 @@ function buildBurnChart(labels, burnrate) {
 
 function chartOptions() {
 	return {
-		responsive: true,
-		maintainAspectRatio: false,
+		responsive: true, maintainAspectRatio: false,
 		plugins: {
 			legend: { display: false },
-			tooltip: {
-				callbacks: {
-					label: function (ctx) {
-						return ctx.dataset.label + ': ' + new Intl.NumberFormat('de-DE', {
-							style: 'currency', currency: 'EUR', maximumFractionDigits: 0
-						}).format(ctx.raw);
-					}
-				}
-			}
+			tooltip: { callbacks: { label: function(ctx) {
+				return ctx.dataset.label + ': ' + new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(ctx.raw);
+			}}}
 		},
 		scales: {
-			x: {
-				ticks: { color: '#888', font: { size: 11 } },
-				grid: { color: 'rgba(128,128,128,0.15)' }
-			},
-			y: {
-				ticks: {
-					color: '#888', font: { size: 11 },
-					callback: function (v) {
-						return new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 0 }).format(v);
-					}
-				},
-				grid: { color: 'rgba(128,128,128,0.15)' }
-			}
+			x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.15)' } },
+			y: { ticks: { color: '#888', font: { size: 11 }, callback: function(v) {
+				return new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 0 }).format(v);
+			}}, grid: { color: 'rgba(128,128,128,0.15)' } }
 		}
 	};
 }
@@ -261,13 +230,12 @@ function loadAngebote() {
 			],
 			limit: 500
 		},
-		callback: function (r) {
+		callback: function(r) {
 			if (!r.message) return;
 			var byCompany = {};
 			var total = 0;
 			var totalCount = 0;
-
-			r.message.forEach(function (q) {
+			r.message.forEach(function(q) {
 				var co = q.company || 'Unbekannt';
 				if (!byCompany[co]) { byCompany[co] = { count: 0, total: 0 }; }
 				byCompany[co].count++;
@@ -275,20 +243,12 @@ function loadAngebote() {
 				total += q.net_total || 0;
 				totalCount++;
 			});
-
 			var html = '';
-			Object.keys(byCompany).forEach(function (co) {
+			Object.keys(byCompany).forEach(function(co) {
 				var d = byCompany[co];
-				html += '<div class="fd-row">' +
-					'<span class="fd-row-label">' + co + '<span class="fd-badge">' + d.count + '</span></span>' +
-					'<span class="fd-row-val fd-color-blue">' + fmt(d.total) + '</span>' +
-					'</div>';
+				html += '<div class="fd-row"><span class="fd-row-label">' + co + '<span class="fd-badge">' + d.count + '</span></span><span class="fd-row-val fd-color-blue">' + fmt(d.total) + '</span></div>';
 			});
-			html += '<div class="fd-row fd-row-total">' +
-				'<span class="fd-row-label">Total <span class="fd-badge">' + totalCount + '</span></span>' +
-				'<span class="fd-row-val fd-color-green">' + fmt(total) + '</span>' +
-				'</div>';
-
+			html += '<div class="fd-row fd-row-total"><span class="fd-row-label">Total <span class="fd-badge">' + totalCount + '</span></span><span class="fd-row-val fd-color-green">' + fmt(total) + '</span></div>';
 			$('#fd-angebote-rows').html(html);
 		}
 	});
@@ -297,12 +257,8 @@ function loadAngebote() {
 function loadOutstanding() {
 	frappe.call({
 		method: 'frappe.desk.query_report.run',
-		args: {
-			report_name: 'Outstanding Report',
-			filters: {},
-			ignore_prepared_report: true
-		},
-		callback: function (r) {
+		args: { report_name: 'Outstanding Report', filters: {}, ignore_prepared_report: true },
+		callback: function(r) {
 			if (!r.message || !r.message.result) {
 				$('#fd-outstanding-rows').html('<div class="fd-loading">Keine Daten</div>');
 				return;
@@ -310,32 +266,17 @@ function loadOutstanding() {
 			var rows = r.message.result;
 			var unbilled = 0;
 			var invoicedNotPaid = 0;
-
-			rows.forEach(function (row) {
+			rows.forEach(function(row) {
 				var type = row.type !== undefined ? row.type : row[10];
 				var unbilledAmt = row.unbilled_netto !== undefined ? row.unbilled_netto : (row[7] || 0);
 				var invoicedAmt = row.invoice_outstanding_netto !== undefined ? row.invoice_outstanding_netto : (row[8] || 0);
-				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') {
-					unbilled += unbilledAmt;
-				} else if (type === 'Invoiced Not Paid') {
-					invoicedNotPaid += invoicedAmt;
-				}
+				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') { unbilled += unbilledAmt; }
+				else if (type === 'Invoiced Not Paid') { invoicedNotPaid += invoicedAmt; }
 			});
-
 			var total = unbilled + invoicedNotPaid;
-			var html = '<div class="fd-row">' +
-				'<span class="fd-row-label">Unbilled (nicht fakturiert)</span>' +
-				'<span class="fd-row-val fd-color-blue">' + fmt(unbilled) + '</span>' +
-				'</div>' +
-				'<div class="fd-row">' +
-				'<span class="fd-row-label">Invoiced not paid</span>' +
-				'<span class="fd-row-val fd-color-amber">' + fmt(invoicedNotPaid) + '</span>' +
-				'</div>' +
-				'<div class="fd-row fd-row-total">' +
-				'<span class="fd-row-label">Total Expected (Netto)</span>' +
-				'<span class="fd-row-val fd-color-green">' + fmt(total) + '</span>' +
-				'</div>';
-
+			var html = '<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><span class="fd-row-val fd-color-blue">' + fmt(unbilled) + '</span></div>' +
+				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><span class="fd-row-val fd-color-amber">' + fmt(invoicedNotPaid) + '</span></div>' +
+				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><span class="fd-row-val fd-color-green">' + fmt(total) + '</span></div>';
 			$('#fd-outstanding-rows').html(html);
 		}
 	});
