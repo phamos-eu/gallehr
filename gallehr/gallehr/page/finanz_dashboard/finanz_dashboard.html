@@ -30,44 +30,58 @@
     <button class="btn btn-sm btn-primary fd-apply-btn">Anwenden</button>
   </div>
 
-  <!-- ROW 1: Umsatz Ist, Umsatz Soll, Liquidität -->
-  <div class="fd-kpi-row fd-kpi-row-1" id="fd-kpi-row-1"></div>
+  <!-- ROW 1: Umsatz (left) + Liquidität & Runway (right) -->
+  <div class="fd-top-row">
+    <div class="fd-info-box">
+      <div class="fd-info-title"><span>Umsatz</span></div>
+      <div id="fd-umsatz-rows">
+        <div class="fd-loading">Laden...</div>
+      </div>
+    </div>
+    <div class="fd-info-box">
+      <div class="fd-info-title"><span>Liquidität &amp; Runway</span></div>
+      <div id="fd-liq-rows">
+        <div class="fd-loading">Laden...</div>
+      </div>
+    </div>
+  </div>
 
-  <!-- ROW 2: Tage ohne Zahlung, Reale Lücke, Vorr. Lücke -->
-  <div class="fd-kpi-row fd-kpi-row-2" id="fd-kpi-row-2"></div>
-
-  <!-- ROW 3: Offene Angebote + Outstanding -->
+  <!-- ROW 2: Offene Angebote + Outstanding -->
   <div class="fd-bottom-row">
     <div class="fd-info-box">
       <div class="fd-info-title">
         <span>Offene Angebote</span>
         <a href="/app/quotation" target="_blank" class="fd-link">→ Alle anzeigen</a>
       </div>
-      <div id="fd-angebote-rows"><div class="fd-loading">Laden...</div></div>
+      <div id="fd-angebote-rows">
+        <div class="fd-loading">Laden...</div>
+      </div>
     </div>
     <div class="fd-info-box">
       <div class="fd-info-title">
         <span>Outstanding Aufträge</span>
         <a href="/app/query-report/Outstanding%20Report" target="_blank" class="fd-link">→ Zum Bericht</a>
       </div>
-      <div id="fd-outstanding-rows"><div class="fd-loading">Laden...</div></div>
+      <div id="fd-outstanding-rows">
+        <div class="fd-loading">Laden...</div>
+      </div>
     </div>
   </div>
 
-  <!-- ROW 4: Charts -->
+  <!-- ROW 3: Charts -->
   <div class="fd-charts-row">
-    <div class="fd-chart-box fd-chart-large">
-      <div class="fd-chart-title">G&amp;V — Einnahmen / Ausgaben / Liquidität</div>
+    <div class="fd-chart-box">
+      <div class="fd-chart-title">G&amp;V — Einnahmen / Ausgaben / Liquidität (Netto)</div>
       <div class="fd-legend" id="fd-legend-gv"></div>
       <div class="fd-chart-wrap">
-        <canvas id="fd-chart-gv" role="img" aria-label="G&V Monatsverlauf">Monatliche Einnahmen, Ausgaben und Liquiditaet.</canvas>
+        <canvas id="fd-chart-gv" role="img" aria-label="G&V Monatsverlauf"></canvas>
       </div>
     </div>
-    <div class="fd-chart-box fd-chart-small">
-      <div class="fd-chart-title">Burnrate / Monat</div>
+    <div class="fd-chart-box">
+      <div class="fd-chart-title">Burnrate / Monat (Netto)</div>
       <div class="fd-legend" id="fd-legend-burn"></div>
       <div class="fd-chart-wrap">
-        <canvas id="fd-chart-burn" role="img" aria-label="Monatliche Burnrate">Burnrate pro Monat.</canvas>
+        <canvas id="fd-chart-burn" role="img" aria-label="Monatliche Burnrate"></canvas>
       </div>
     </div>
   </div>
