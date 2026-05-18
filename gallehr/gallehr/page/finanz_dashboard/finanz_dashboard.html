@@ -16,8 +16,19 @@
       </select>
     </div>
     <div class="fd-fg">
-      <label>Start Liquidität (Brutto)</label>
-      <input type="number" id="fd-liq" class="form-control form-control-sm" value="474200" placeholder="z.B. 474200">
+      <label>Aktueller Kontostand (Brutto)</label>
+      <input type="number" id="fd-aktuell" class="form-control form-control-sm" placeholder="z.B. 300000">
+    </div>
+    <div class="fd-fg fd-fg-check">
+      <label>&nbsp;</label>
+      <label class="fd-check-label">
+        <input type="checkbox" id="fd-aktuell-save"> Als Standard speichern
+      </label>
+    </div>
+    <div class="fd-fg fd-sep"></div>
+    <div class="fd-fg">
+      <label>Start Liquidität Jan (Brutto)</label>
+      <input type="number" id="fd-liq" class="form-control form-control-sm" placeholder="Fallback">
     </div>
     <div class="fd-fg">
       <label>Angebotsumwandlung %</label>
@@ -30,13 +41,21 @@
     <button class="btn btn-sm btn-primary fd-apply-btn">Anwenden</button>
   </div>
 
-  <!-- ROW 1: Umsatz Ist, Umsatz Soll, Liquidität -->
-  <div class="fd-kpi-row fd-kpi-row-1" id="fd-kpi-row-1"></div>
+  <div id="fd-snap-notice" class="fd-snap-notice" style="display:none"></div>
 
-  <!-- ROW 2: Tage ohne Zahlung, Reale Lücke, Vorr. Lücke -->
-  <div class="fd-kpi-row fd-kpi-row-2" id="fd-kpi-row-2"></div>
+  <!-- ROW 1: Umsatz + Liquidität & Runway -->
+  <div class="fd-top-row">
+    <div class="fd-info-box">
+      <div class="fd-info-title"><span>Umsatz</span></div>
+      <div id="fd-umsatz-rows"><div class="fd-loading">Laden...</div></div>
+    </div>
+    <div class="fd-info-box">
+      <div class="fd-info-title"><span>Liquidität &amp; Runway</span></div>
+      <div id="fd-liq-rows"><div class="fd-loading">Laden...</div></div>
+    </div>
+  </div>
 
-  <!-- ROW 3: Offene Angebote + Outstanding -->
+  <!-- ROW 2: Offene Angebote + Outstanding -->
   <div class="fd-bottom-row">
     <div class="fd-info-box">
       <div class="fd-info-title">
@@ -54,22 +73,31 @@
     </div>
   </div>
 
-  <!-- ROW 4: Charts -->
+  <!-- ROW 3: Charts -->
   <div class="fd-charts-row">
-    <div class="fd-chart-box fd-chart-large">
-      <div class="fd-chart-title">G&amp;V — Einnahmen / Ausgaben / Liquidität</div>
+    <div class="fd-chart-box">
+      <div class="fd-chart-title">G&amp;V — Einnahmen / Ausgaben / Liquidität (Netto)</div>
       <div class="fd-legend" id="fd-legend-gv"></div>
       <div class="fd-chart-wrap">
-        <canvas id="fd-chart-gv" role="img" aria-label="G&V Monatsverlauf">Monatliche Einnahmen, Ausgaben und Liquiditaet.</canvas>
+        <canvas id="fd-chart-gv" role="img" aria-label="G&V Monatsverlauf"></canvas>
       </div>
     </div>
-    <div class="fd-chart-box fd-chart-small">
-      <div class="fd-chart-title">Burnrate / Monat</div>
+    <div class="fd-chart-box">
+      <div class="fd-chart-title">Burnrate / Monat (Netto)</div>
       <div class="fd-legend" id="fd-legend-burn"></div>
       <div class="fd-chart-wrap">
-        <canvas id="fd-chart-burn" role="img" aria-label="Monatliche Burnrate">Burnrate pro Monat.</canvas>
+        <canvas id="fd-chart-burn" role="img" aria-label="Monatliche Burnrate"></canvas>
       </div>
     </div>
+  </div>
+
+  <!-- ROW 4: Snapshot history -->
+  <div class="fd-info-box fd-snap-box">
+    <div class="fd-info-title">
+      <span>Liquidität Snapshots</span>
+      <a href="/app/liquiditaet-snapshot" target="_blank" class="fd-link">→ Alle verwalten</a>
+    </div>
+    <div id="fd-snap-rows"><div class="fd-loading">Laden...</div></div>
   </div>
 
 </div>

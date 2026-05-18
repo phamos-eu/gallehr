@@ -13,23 +13,23 @@ doctype_js = {
     "Web Form" : "public/js/web_form.js",
 }
 fixtures = [
-	{"dt": "Print Format", "filters": 
-		[
-			["module", "=", "Gallehr"],
-			["standard", "!=", "Yes"]
-		
-		]
-	},
-	{"dt": "Custom Field", "filters":
-		[
-			["module", "=", "Gallehr"]
-		]
-	},
-	{"dt": "Property Setter", "filters":
-		[
-			["module", "=", "Gallehr"]
-		]
-	}
+    {"dt": "Print Format", "filters": 
+        [
+            ["module", "=", "Gallehr"],
+            ["standard", "!=", "Yes"]
+        ]
+    },
+    {"dt": "Custom Field", "filters":
+        [
+            ["module", "=", "Gallehr"]
+        ]
+    },
+    {"dt": "Property Setter", "filters":
+        [
+            ["module", "=", "Gallehr"]
+        ]
+    },
+    {"dt": "DocType", "filters": [["module", "=", "Gallehr"]]}
 ]
 
 override_whitelisted_methods = {
