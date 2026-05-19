@@ -29,7 +29,12 @@ fixtures = [
 		[
 			["module", "=", "Gallehr"]
 		]
-	}
+	},
+    {"dt": "DocType",       "filters":
+    	[
+            ["module","=","Gallehr"],["custom","=","1"]
+        ]
+    }
 ]
 
 override_whitelisted_methods = {
