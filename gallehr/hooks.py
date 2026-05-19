@@ -7,31 +7,28 @@ app_license = "MIT"
 
 # include js in doctype views
 doctype_js = {
-    "Contact" : "public/js/contact.js",
-    "Leave Application" : "public/js/leave_application.js",
-    # "Sales Order" : "public/js/sales_order.js",
-    "Web Form" : "public/js/web_form.js",
+    "Contact": "public/js/contact.js",
+    "Leave Application": "public/js/leave_application.js",
+    # "Sales Order": "public/js/sales_order.js",
+    "Web Form": "public/js/web_form.js",
 }
+
 fixtures = [
-    {"dt": "Print Format", "filters": 
-        [
-            ["module", "=", "Gallehr"],
-            ["standard", "!=", "Yes"]
-        ]
-    },
-    {"dt": "Custom Field", "filters":
-        [
-            ["module", "=", "Gallehr"]
-        ]
-    },
-    {"dt": "Property Setter", "filters":
-        [
-            ["module", "=", "Gallehr"]
-        ]
-    },
-    {"dt": "DocType", "filters": [["module", "=", "Gallehr"]]}
+    {"dt": "Print Format", "filters": [
+        ["module", "=", "Gallehr"],
+        ["standard", "!=", "Yes"]
+    ]},
+    {"dt": "Custom Field", "filters": [
+        ["module", "=", "Gallehr"]
+    ]},
+    {"dt": "Property Setter", "filters": [
+        ["module", "=", "Gallehr"]
+    ]},
+    {"dt": "DocType", "filters": [
+        ["name", "=", "Liquiditaet Snapshot"]
+    ]}
 ]
 
 override_whitelisted_methods = {
-	"frappe.desk.search.search_link": "gallehr.override.search.search_link",
+    "frappe.desk.search.search_link": "gallehr.override.search.search_link",
 }
