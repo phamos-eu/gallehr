@@ -1,0 +1,18 @@
+{
+ "creation": "2026-05-15 00:00:00.000000",
+ "doctype": "Page",
+ "modified": "2026-05-15 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gallehr",
+ "name": "finanz-dashboard",
+ "owner": "Administrator",
+ "page_name": "finanz-dashboard",
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "Dashboard Manager"
+  }
+ ],
+ "system_page": 0,
+ "title": "Finanz Dashboard"
+}
