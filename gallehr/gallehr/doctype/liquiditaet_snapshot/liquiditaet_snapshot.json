@@ -2,71 +2,28 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "format:LIQ-SNAP-{YYYY}-{MM}-{DD}-{######}",
- "creation": "2026-05-18 20:15:19.900740",
+ "creation": "2026-05-19 00:00:00.000000",
+ "custom": 1,
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
-  "kontostand_brutto",
-  "datum",
-  "als_standard",
-  "notiz"
- ],
+ "field_order": ["kontostand_brutto","datum","als_standard","notiz"],
  "fields": [
-  {
-   "fieldname": "kontostand_brutto",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Kontostand Brutto",
-   "reqd": 1
-  },
-  {
-   "fieldname": "datum",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Datum",
-   "reqd": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "als_standard",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Als Standard verwenden"
-  },
-  {
-   "fieldname": "notiz",
-   "fieldtype": "Small Text",
-   "label": "Notiz"
-  }
+  {"fieldname": "kontostand_brutto", "fieldtype": "Currency", "label": "Kontostand Brutto", "reqd": 1},
+  {"fieldname": "datum", "fieldtype": "Datetime", "label": "Datum", "reqd": 1},
+  {"fieldname": "als_standard", "fieldtype": "Check", "label": "Als Standard verwenden"},
+  {"fieldname": "notiz", "fieldtype": "Small Text", "label": "Notiz"}
  ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-05-18 20:15:19.900740",
+ "modified": "2026-05-19 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gallehr",
  "name": "Liquiditaet Snapshot",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Dashboard Manager",
-   "share": 1,
-   "write": 1
-  }
+  {"role": "Dashboard Manager", "read": 1, "write": 1, "create": 1, "delete": 1}
  ],
- "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
- "sort_field": "modified",
+ "sort_field": "datum",
  "sort_order": "DESC",
- "states": [],
  "track_changes": 1
 }
