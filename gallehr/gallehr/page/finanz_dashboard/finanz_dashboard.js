@@ -280,7 +280,7 @@ function processReport(columns, rows, jahr) {
 	var ist = peur('Umsatz Ist');
 	var soll = peur('Umsatz Soll');
 	var vorrLuecke = peur('Vorraussichtliche');
-	var liqNetto = peur('Liquiditaet aktuell (Netto');
+	var liqBrutto = peur('Liquiditaet aktuell');
 	var burnTag = peur('Burnrate/Tag verwendet');
 	var burnM = burnTag * 30;
 	var tage = pzahl('Tage ohne');
@@ -293,7 +293,7 @@ function processReport(columns, rows, jahr) {
 		rowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), lueckeClass)
 	);
 	$('#fd-liq-rows').html(
-		row('Liquidität aktuell (Netto)', fmt(liqNetto), 'fd-color-blue') +
+		row('Liquidität aktuell (Brutto/Kontostand)', fmt(liqBrutto), 'fd-color-blue') +
 		row('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
 		row('Burnrate / Tag (Netto)', fmt(burnTag, 2), 'fd-color-purple') +
 		rowTotal('Burnrate / Monat (Netto)', fmt(burnM), 'fd-color-purple')
@@ -307,7 +307,7 @@ function processReport(columns, rows, jahr) {
 	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
 	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
 	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
-	var liquiditaet = activeMonths.map(function (r) { return r.liquiditaet_netto !== undefined ? r.liquiditaet_netto : (r[8] || 0); });
+	var liquiditaet = activeMonths.map(function (r) { return r.liquiditaet !== undefined ? r.liquiditaet : (r[7] || 0); });
 	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
 
 	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
@@ -331,14 +331,14 @@ function buildGVChart(labels, einnahmen, ausgaben, liquiditaet) {
 	$('#fd-legend-gv').html(
 		'<span><span class="fd-dot" style="background:#639922"></span>Einnahmen</span>' +
 		'<span><span class="fd-dot" style="background:#E24B4A"></span>Ausgaben</span>' +
-		'<span><span class="fd-dot" style="background:#378ADD"></span>Liquidität Netto</span>'
+		'<span><span class="fd-dot" style="background:#378ADD"></span>Liquidität (Brutto)</span>'
 	);
 	window.fd_charts.gv = new Chart(ctx, {
 		type: 'line', data: {
 			labels: labels, datasets: [
 				{ label: 'Einnahmen', data: einnahmen, borderColor: '#639922', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false },
 				{ label: 'Ausgaben', data: ausgaben, borderColor: '#E24B4A', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false, borderDash: [4, 3] },
-				{ label: 'Liquidität Netto', data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8, 3] }
+				{ label: 'Liquidität (Brutto)', data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8, 3] }
 			]
 		}, options: chartOptions()
 	});
