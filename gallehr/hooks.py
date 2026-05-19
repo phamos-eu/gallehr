@@ -23,9 +23,6 @@ fixtures = [
     ]},
     {"dt": "Property Setter", "filters": [
         ["module", "=", "Gallehr"]
-    ]},
-    {"dt": "DocType", "filters": [
-        ["name", "=", "Liquiditaet Snapshot"]
     ]}
 ]
 

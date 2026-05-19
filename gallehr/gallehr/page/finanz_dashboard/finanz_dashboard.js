@@ -10,6 +10,9 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 	window.fd_charts = {};
 	window.fd_chart_js_loaded = false;
 
+	bindEvents();
+	loadAll();
+
 	var script = document.createElement('script');
 	script.src = '/assets/gallehr/js/chart.umd.min.js';
 	script.onload = function () {
@@ -20,44 +23,17 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 		}
 	};
 	document.head.appendChild(script);
-
-	bindEvents();
-	loadSnapshots(function () { loadAll(); });
 };
 
 function bindEvents() {
 	$(document).on('click', '.fd-apply-btn, .fd-refresh-btn', function () {
-		var aktuell = parseFloat($('#fd-aktuell').val());
-		var save = $('#fd-aktuell-save').is(':checked');
-		if (aktuell > 0 && save) {
-			saveSnapshot(aktuell, function () { loadAll(); loadSnapshots(); });
-		} else {
-			loadAll();
-		}
-	});
-
-	$(document).on('click', '.fd-snap-del-btn', function () {
-		var name = $(this).data('name');
-		frappe.confirm('Snapshot löschen?', function () {
-			frappe.call({
-				method: 'frappe.client.delete',
-				args: { doctype: 'Liquiditaet Snapshot', name: name },
-				callback: function () { loadSnapshots(function () { loadAll(); }); }
-			});
-		});
-	});
-
-	$(document).on('click', '.fd-snap-set-btn', function () {
-		var name = $(this).data('name');
-		var val = parseFloat($(this).data('val'));
-		setDefaultSnapshot(name, val);
+		loadAll();
 	});
 }
 
 function getFilters() {
 	return {
 		jahr: $('#fd-jahr').val() || '2026',
-		aktuell_liquiditaet: parseFloat($('#fd-aktuell').val()) || 0,
 		start_liquiditaet: parseFloat($('#fd-liq').val()) || 0,
 		angebotsumwandlung: parseFloat($('#fd-umwandlung').val()) || 30,
 		avg_aus_tag_manuell: parseFloat($('#fd-burnrate').val()) || 0
@@ -80,158 +56,6 @@ function fmtN(val, decimals) {
 		minimumFractionDigits: decimals, maximumFractionDigits: decimals
 	}).format(val);
 }
-
-function fmtDt(dt) {
-	if (!dt) return '—';
-	return frappe.datetime.str_to_user(dt.substring(0, 16));
-}
-
-// ── Snapshot persistence ──────────────────────────────────────────────────────
-
-function loadSnapshots(cb) {
-	frappe.call({
-		method: 'frappe.client.get_value',
-		args: { doctype: 'DocType', filters: { name: 'Liquiditaet Snapshot' }, fieldname: 'name' },
-		callback: function (r) {
-			if (!r.message || !r.message.name) {
-				$('#fd-snap-rows').html('<div class="fd-loading">Snapshots nicht verfügbar (bench migrate ausstehend)</div>');
-				if (cb) cb();
-				return;
-			}
-			frappe.call({
-				method: 'frappe.client.get_list',
-				args: {
-					doctype: 'Liquiditaet Snapshot',
-					fields: ['name', 'kontostand_brutto', 'datum', 'als_standard', 'notiz'],
-					order_by: 'datum desc',
-					limit: 50
-				},
-				callback: function (r) {
-					var snaps = r.message || [];
-					renderSnapshotTable(snaps);
-					var aktuelField = $('#fd-aktuell');
-					if (!aktuelField.val()) {
-						var def = null;
-						snaps.forEach(function (s) { if (s.als_standard) def = s; });
-						if (def) {
-							aktuelField.val(def.kontostand_brutto);
-							showNotice('Standard-Snapshot vom ' + fmtDt(def.datum) + ' geladen (' + fmt(def.kontostand_brutto) + ')', 'info');
-						}
-					}
-					if (cb) cb();
-				}
-			});
-		}
-	});
-}
-
-function saveSnapshot(val, cb) {
-	// Clear existing defaults first, then create new
-	frappe.call({
-		method: 'frappe.client.get_list',
-		args: { doctype: 'Liquiditaet Snapshot', filters: { als_standard: 1 }, fields: ['name'], limit: 50 },
-		callback: function (r) {
-			var prev = r.message || [];
-			var chain = prev.length;
-
-			function createNew() {
-				frappe.call({
-					method: 'frappe.client.insert',
-					args: {
-						doc: {
-							doctype: 'Liquiditaet Snapshot',
-							kontostand_brutto: val,
-							datum: frappe.datetime.now_datetime(),
-							als_standard: 1
-						}
-					},
-					callback: function () {
-						showNotice('Snapshot gespeichert und als Standard gesetzt (' + fmt(val) + ')', 'saved');
-						if (cb) cb();
-					}
-				});
-			}
-
-			if (chain === 0) {
-				createNew();
-			} else {
-				var done = 0;
-				prev.forEach(function (p) {
-					frappe.call({
-						method: 'frappe.client.set_value',
-						args: { doctype: 'Liquiditaet Snapshot', name: p.name, fieldname: 'als_standard', value: 0 },
-						callback: function () { done++; if (done === chain) createNew(); }
-					});
-				});
-			}
-		}
-	});
-}
-
-function setDefaultSnapshot(name, val) {
-	// Clear all defaults, set this one, prefill field
-	frappe.call({
-		method: 'frappe.client.get_list',
-		args: { doctype: 'Liquiditaet Snapshot', filters: { als_standard: 1 }, fields: ['name'], limit: 50 },
-		callback: function (r) {
-			var prev = r.message || [];
-			var done = 0;
-			var total = prev.length;
-
-			function finish() {
-				frappe.call({
-					method: 'frappe.client.set_value',
-					args: { doctype: 'Liquiditaet Snapshot', name: name, fieldname: 'als_standard', value: 1 },
-					callback: function () {
-						$('#fd-aktuell').val(val);
-						showNotice('Standard gesetzt: ' + fmt(val), 'saved');
-						loadSnapshots(function () { loadAll(); });
-					}
-				});
-			}
-
-			if (total === 0) { finish(); return; }
-			prev.forEach(function (p) {
-				frappe.call({
-					method: 'frappe.client.set_value',
-					args: { doctype: 'Liquiditaet Snapshot', name: p.name, fieldname: 'als_standard', value: 0 },
-					callback: function () { done++; if (done === total) finish(); }
-				});
-			});
-		}
-	});
-}
-
-function renderSnapshotTable(snaps) {
-	if (!snaps.length) {
-		$('#fd-snap-rows').html('<div class="fd-loading">Keine Snapshots vorhanden</div>');
-		return;
-	}
-	var html = '<table class="fd-snap-table">' +
-		'<thead><tr>' +
-		'<th>Datum</th><th>Kontostand Brutto</th><th>Standard</th><th style="text-align:right">Aktionen</th>' +
-		'</tr></thead><tbody>';
-	snaps.forEach(function (s) {
-		var stdBadge = s.als_standard
-			? '<span class="fd-snap-std-badge">Standard</span>'
-			: '<button class="fd-snap-set-btn" data-name="' + s.name + '" data-val="' + s.kontostand_brutto + '">Als Standard</button>';
-		html += '<tr>' +
-			'<td>' + fmtDt(s.datum) + '</td>' +
-			'<td class="val">' + fmt(s.kontostand_brutto) + '</td>' +
-			'<td class="std">' + stdBadge + '</td>' +
-			'<td class="act"><button class="fd-snap-del-btn fd-snap-del" data-name="' + s.name + '" title="Löschen">✕</button></td>' +
-			'</tr>';
-	});
-	html += '</tbody></table>';
-	$('#fd-snap-rows').html(html);
-}
-
-function showNotice(msg, type) {
-	$('#fd-snap-notice').removeClass('info saved').addClass(type).text(msg).show();
-	setTimeout(function () { $('#fd-snap-notice').fadeOut(400); }, 4000);
-}
-
-// ── Report ────────────────────────────────────────────────────────────────────
 
 function loadAll() {
 	loadReport();
@@ -308,7 +132,7 @@ function processReport(columns, rows, jahr) {
 	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
 	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
 	var liquiditaet = activeMonths.map(function (r) { return r.liquiditaet !== undefined ? r.liquiditaet : (r[7] || 0); });
-	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
+	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[11] || 0); });
 
 	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
 	if (window.fd_chart_js_loaded) {
