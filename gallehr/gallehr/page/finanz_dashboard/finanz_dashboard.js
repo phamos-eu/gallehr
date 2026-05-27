@@ -132,27 +132,34 @@ function processReport(rows, jahr) {
 	var soll       = peur('Umsatz Soll');
 	var vorrLuecke = peur('Vorraussichtliche');
 	var liqBrutto  = peur('Liquiditaet aktuell');
+  var realLuecke = peur('Reale Umsatz');
 	var burnTag    = peur('Burnrate/Tag verwendet');
 	var burnM      = burnTag * 30;
 	var tage       = pzahl('Tage ohne');
 	var monate     = pzahl('Monate ohne');
 
-	var lueckeClass = vorrLuecke > 0 ? 'fd-color-red' : 'fd-color-green';
+	// Negativ = Überschuss (gut/grün), Positiv = Lücke (schlecht/rot)
+	var realClass = realLuecke <= 0 ? 'fd-color-green' : 'fd-color-red';
+	var vorrClass = vorrLuecke <= 0 ? 'fd-color-green' : 'fd-color-red';
 
+	// Umsatz box: 4 rows
 	$('#fd-umsatz-rows').html(
-		fdRow('Umsatz Ist (YTD)',      fmt(ist),        'fd-color-green') +
-		fdRow('Umsatz Soll',          fmt(soll),       'fd-color-purple') +
-		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), lueckeClass)
+		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green') +
+		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple') +
+		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass) +
+		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass)
 	);
 
+	// Liquidität box — Burnrate in Brutto like Excel
 	$('#fd-liq-rows').html(
-		fdRow('Liquidität aktuell (Brutto/Kontostand)', fmt(liqBrutto),       'fd-color-blue') +
-		fdRow('Tage ohne Zahlung',   fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
-		fdRow('Burnrate / Tag (Netto)',   fmt(burnTag, 2), 'fd-color-purple') +
-		fdRowTotal('Burnrate / Monat (Netto)', fmt(burnM),   'fd-color-purple')
+		fdRow('Liquidität aktuell (Brutto/Kontostand)', fmt(liqBrutto), 'fd-color-blue') +
+		fdRow('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
+		fdRow('Burnrate / Tag (Brutto)', fmt(burnTag, 2), 'fd-color-purple') +
+		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple')
 	);
 
-	var activeMonths = monthlyRows.filter(function(r) {
+	// Charts — all Brutto (Einnahmen, Ausgaben, Liquidität, Burnrate/M)
+	var activeMonths = monthlyRows.filter(function (r) {
 		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
 		var aus = r.ausgaben_brutto  !== undefined ? r.ausgaben_brutto  : (r[5] || 0);
 		return ein > 0 || aus > 0;
@@ -183,25 +190,37 @@ function buildGVChart(labels, einnahmen, ausgaben, liquiditaet) {
 	var ctx = document.getElementById('fd-chart-gv');
 	if (!ctx) return;
 	$('#fd-legend-gv').html(
-		'<span><span class="fd-dot" style="background:#639922"></span>Einnahmen</span>' +
-		'<span><span class="fd-dot" style="background:#E24B4A"></span>Ausgaben</span>' +
+		'<span><span class="fd-dot" style="background:#639922"></span>Einnahmen (Brutto)</span>' +
+		'<span><span class="fd-dot" style="background:#E24B4A"></span>Ausgaben (Brutto)</span>' +
 		'<span><span class="fd-dot" style="background:#378ADD"></span>Liquidität (Brutto)</span>'
 	);
-	window.fd_charts.gv = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [
-		{ label: 'Einnahmen',          data: einnahmen,   borderColor: '#639922', borderWidth: 2,   pointRadius: 4, tension: 0.3, fill: false },
-		{ label: 'Ausgaben',           data: ausgaben,    borderColor: '#E24B4A', borderWidth: 2,   pointRadius: 4, tension: 0.3, fill: false, borderDash: [4,3] },
-		{ label: 'Liquidität (Brutto)',data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8,3] }
-	]}, options: chartOptions() });
+	window.fd_charts.gv = new Chart(ctx, {
+		type: 'line',
+		data: {
+			labels: labels, datasets: [
+				{ label: 'Einnahmen (Brutto)', data: einnahmen, borderColor: '#639922', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false },
+				{ label: 'Ausgaben (Brutto)', data: ausgaben, borderColor: '#E24B4A', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: false, borderDash: [4, 3] },
+				{ label: 'Liquidität (Brutto)', data: liquiditaet, borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: false, borderDash: [8, 3] }
+			]
+		},
+		options: chartOptions()
+	});
 }
 
 function buildBurnChart(labels, burnrate) {
 	if (window.fd_charts && window.fd_charts.burn) { window.fd_charts.burn.destroy(); }
 	var ctx = document.getElementById('fd-chart-burn');
 	if (!ctx) return;
-	$('#fd-legend-burn').html('<span><span class="fd-dot" style="background:#534AB7"></span>Burnrate/M (Netto)</span>');
-	window.fd_charts.burn = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [
-		{ label: 'Burnrate/M', data: burnrate, borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true }
-	]}, options: chartOptions() });
+	$('#fd-legend-burn').html('<span><span class="fd-dot" style="background:#534AB7"></span>Burnrate/M (Brutto)</span>');
+	window.fd_charts.burn = new Chart(ctx, {
+		type: 'line',
+		data: {
+			labels: labels, datasets: [
+				{ label: 'Burnrate/M (Brutto)', data: burnrate, borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true }
+			]
+		},
+		options: chartOptions()
+	});
 }
 
 function chartOptions() {
@@ -276,7 +295,7 @@ function loadSnapshots(cb) {
 		args: { doctype: 'DocType', filters: { name: 'Liquiditaet Snapshot' }, fieldname: 'name' },
 		callback: function(r) {
 			if (!r.message || !r.message.name) {
-				$('#fd-snap-rows').html('<div class="fd-loading">Snapshots nicht verfügbar (bench migrate ausstehend)</div>');
+				$('#fd-snap-rows').html('<div class="fd-loading">Snapshots nicht verfügbar</div>');
 				if (cb) cb();
 				return;
 			}
