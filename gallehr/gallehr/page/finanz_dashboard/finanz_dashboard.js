@@ -25,14 +25,39 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 	loadSnapshots(function () { loadAll(); });
 };
 
+function applyFilters() {
+	var aktuell = parseFloat($('#fd-aktuell').val());
+	var save = $('#fd-aktuell-save').is(':checked');
+	if (aktuell > 0 && save) {
+		saveSnapshot(aktuell, function () { loadSnapshots(); loadAll(); });
+	} else {
+		loadAll();
+	}
+}
+
 function bindEvents() {
 	$(document).on('click', '.fd-apply-btn, .fd-refresh-btn', function () {
-		var aktuell = parseFloat($('#fd-aktuell').val());
-		var save = $('#fd-aktuell-save').is(':checked');
-		if (aktuell > 0 && save) {
-			saveSnapshot(aktuell, function () { loadSnapshots(); loadAll(); });
-		} else {
-			loadAll();
+		applyFilters();
+	});
+
+	// Enter key on any filter input triggers Anwenden
+	$(document).on('keydown', '#fd-jahr, #fd-aktuell, #fd-liq, #fd-umwandlung, #fd-burnrate', function (e) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			applyFilters();
+		}
+	});
+
+	// Mutual exclusion: Aktuell clears Start, Start clears Aktuell
+	$(document).on('input', '#fd-aktuell', function () {
+		if ($(this).val()) {
+			$('#fd-liq').val('');
+		}
+	});
+	$(document).on('input', '#fd-liq', function () {
+		if ($(this).val()) {
+			$('#fd-aktuell').val('');
+			$('#fd-aktuell-save').prop('checked', false);
 		}
 	});
 	$(document).on('click', '.fd-snap-del-btn', function () {
