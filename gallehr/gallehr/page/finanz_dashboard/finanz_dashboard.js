@@ -107,6 +107,10 @@ function processReport(rows, jahr) {
 	var monthlyRows = [];
 	var prognoseMap = {};
 
+	// Current calendar month name — used to exclude incomplete month from charts
+	var now = new Date();
+	var currentMonthName = MONTHS[now.getMonth()];
+
 	(rows || []).forEach(function (row) {
 		var monat = row.monat !== undefined ? row.monat : row[0];
 		var yearVal = row.jahr !== undefined ? row.jahr : row[1];
@@ -130,18 +134,19 @@ function processReport(rows, jahr) {
 
 	var ist = peur('Umsatz Ist');
 	var soll = peur('Umsatz Soll');
-	var realLuecke = peur('Reale Umsatz');
 	var vorrLuecke = peur('Vorraussichtliche');
 	var liqBrutto = peur('Liquiditaet aktuell');
-	// Burnrate/Tag and Burnrate/M are Brutto (like Excel)
+	var realLuecke = peur('Reale Umsatz');
 	var burnTag = peur('Burnrate/Tag verwendet');
-	var burnM = peur('Burnrate/Monat');
+	var burnM = burnTag * 30;
 	var tage = pzahl('Tage ohne');
 	var monate = pzahl('Monate ohne');
 
-	// Negativ = Überschuss (gut/grün), Positiv = Lücke (schlecht/rot)
-	var realClass = realLuecke <= 0 ? 'fd-color-green' : 'fd-color-red';
-	var vorrClass = vorrLuecke <= 0 ? 'fd-color-green' : 'fd-color-red';
+	// SPEC 1: positive = surplus (gedeckt) = grün, negative = Lücke = rot
+	// Sign is now flipped in Python (absehbar - soll, not soll - absehbar),
+	// so here: >= 0 means covered/green, < 0 means gap/red
+	var realClass = realLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
+	var vorrClass = vorrLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
 
 	// Umsatz box: 4 rows
 	$('#fd-umsatz-rows').html(
@@ -159,18 +164,22 @@ function processReport(rows, jahr) {
 		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple')
 	);
 
-	// Charts — all Brutto (Einnahmen, Ausgaben, Liquidität, Burnrate/M)
+	// SPEC 2: Exclude the current calendar month from charts if it has no data yet.
+	// This prevents a misleading nosedive at the end of the chart on day 1 of a new month.
 	var activeMonths = monthlyRows.filter(function (r) {
+		var monat = r.monat !== undefined ? r.monat : r[0];
 		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
 		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
-		return ein > 0 || aus > 0;
+		var hasData = ein > 0 || aus > 0;
+		// Drop current month only when it carries no data yet
+		if (monat === currentMonthName && !hasData) return false;
+		return hasData;
 	});
 
 	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
 	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
 	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
 	var liquiditaet = activeMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
-	// burnrate_m is now Brutto (col index 12)
 	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
 
 	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
@@ -329,6 +338,7 @@ function loadSnapshots(cb) {
 						snaps.forEach(function (s) { if (s.als_standard) def = s; });
 						if (def) {
 							aktuellField.val(def.kontostand_brutto);
+							$('#fd-liq').val('');
 							showNotice('Standard-Snapshot vom ' + fmtDt(def.datum) + ' geladen (' + fmt(def.kontostand_brutto) + ')', 'info');
 						}
 					}
