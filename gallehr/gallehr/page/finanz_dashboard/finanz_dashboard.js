@@ -161,6 +161,8 @@ function processReport(rows, jahr) {
 	var soll = peur('Umsatz Soll');
 	var vorrLuecke = peur('Vorraussichtliche');
 	var liqBrutto = peur('Liquiditaet aktuell');
+	var snapLiq = peur('Snapshot Kontostand');
+	var liqDelta = (liqBrutto && snapLiq) ? liqBrutto - snapLiq : null;
 	var realLuecke = peur('Reale Umsatz');
 	var burnTag = peur('Burnrate/Tag verwendet');
 	var burnM = burnTag * 30;
@@ -182,23 +184,25 @@ function processReport(rows, jahr) {
 	);
 
 	// Liquidität box — Burnrate in Brutto like Excel
+	var deltaClass = liqDelta === null ? '' : (liqDelta >= 0 ? 'fd-color-green' : 'fd-color-red');
+	var deltaStr = liqDelta === null ? '—' : (liqDelta >= 0 ? '+' : '') + fmt(liqDelta);
 	$('#fd-liq-rows').html(
-		fdRow('Liquidität aktuell (Brutto/Kontostand)', fmt(liqBrutto), 'fd-color-blue') +
+		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue') +
+		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue') +
+		fdRow('Differenz (Bank − Snapshot)', deltaStr, deltaClass) +
 		fdRow('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
 		fdRow('Burnrate / Tag (Brutto)', fmt(burnTag, 2), 'fd-color-purple') +
 		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple')
 	);
 
-	// SPEC 2: Exclude the current calendar month from charts if it has no data yet.
-	// This prevents a misleading nosedive at the end of the chart on day 1 of a new month.
+	// SPEC 2: Always exclude the current calendar month from charts.
+	// A running month always has incomplete data — exclude it unconditionally.
 	var activeMonths = monthlyRows.filter(function (r) {
 		var monat = r.monat !== undefined ? r.monat : r[0];
 		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
 		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
-		var hasData = ein > 0 || aus > 0;
-		// Drop current month only when it carries no data yet
-		if (monat === currentMonthName && !hasData) return false;
-		return hasData;
+		if (monat === currentMonthName) return false;
+		return ein > 0 || aus > 0;
 	});
 
 	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
@@ -357,15 +361,12 @@ function loadSnapshots(cb) {
 				callback: function (r) {
 					var snaps = r.message || [];
 					renderSnapshotTable(snaps);
-					var aktuellField = $('#fd-aktuell');
-					if (!aktuellField.val()) {
-						var def = null;
-						snaps.forEach(function (s) { if (s.als_standard) def = s; });
-						if (def) {
-							aktuellField.val(def.kontostand_brutto);
-							$('#fd-liq').val('');
-							showNotice('Standard-Snapshot vom ' + fmtDt(def.datum) + ' geladen (' + fmt(def.kontostand_brutto) + ')', 'info');
-						}
+					// Standard-Snapshot wird direkt im Python-Report aus der DB gelesen.
+					// Filterfeld bleibt leer — nur bei manuellem Override befuellen.
+					var def = null;
+					snaps.forEach(function (s) { if (s.als_standard) def = s; });
+					if (def) {
+						showNotice('Standard-Snapshot vom ' + fmtDt(def.datum) + ' aktiv (' + fmt(def.kontostand_brutto) + ')', 'info');
 					}
 					if (cb) cb();
 				}
