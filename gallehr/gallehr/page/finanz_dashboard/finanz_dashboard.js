@@ -197,7 +197,7 @@ function processReport(rows, jahr) {
 		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
 		var hasData = ein > 0 || aus > 0;
 		// Drop current month only when it carries no data yet
-		if (monat === currentMonthName && !hasData) return false;
+		if (monat === currentMonthName) return false;
 		return hasData;
 	});
 
