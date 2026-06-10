@@ -197,7 +197,7 @@ function processReport(rows, jahr) {
 	var deltaStr = liqDelta === null ? '—' : (liqDelta >= 0 ? '+' : '') + fmt(liqDelta);
 	var snapLink = '/app/liquiditaet-snapshot';
 	$('#fd-liq-rows').html(
-		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue', btLink) +
+		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue', rpLink) +
 		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue', snapLink) +
 		fdRow('Differenz (Bank − Snapshot)', deltaStr, deltaClass) +
 		fdRow('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
