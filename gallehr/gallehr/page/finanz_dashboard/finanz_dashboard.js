@@ -77,13 +77,18 @@ function bindEvents() {
 	});
 }
 
+function parseDE(val) {
+	// Normalize German decimal comma to dot for parseFloat
+	return parseFloat((val || '').replace(',', '.'));
+}
+
 function getFilters() {
 	return {
 		jahr: $('#fd-jahr').val() || '2026',
-		aktuell_liquiditaet: parseFloat($('#fd-aktuell').val()) || 0,
-		start_liquiditaet: parseFloat($('#fd-liq').val()) || 0,
-		angebotsumwandlung: parseFloat($('#fd-umwandlung').val()) || 30,
-		avg_aus_tag_manuell: parseFloat($('#fd-burnrate').val()) || 0
+		aktuell_liquiditaet: parseDE($('#fd-aktuell').val()) || 0,
+		start_liquiditaet: parseDE($('#fd-liq').val()) || 0,
+		angebotsumwandlung: parseDE($('#fd-umwandlung').val()) || 30,
+		avg_aus_tag_manuell: parseDE($('#fd-burnrate').val()) || 0
 	};
 }
 
@@ -176,28 +181,39 @@ function processReport(rows, jahr) {
 	var vorrClass = vorrLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
 
 	// Umsatz box: 4 rows
+	var yearStr = String(jahr);
+	var btLink = '/app/bank-transaction?view=Report&docstatus=1&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
+	var btEinLink = '/app/bank-transaction?view=Report&docstatus=1&deposit=>0&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
+	var rpLink = '/app/query-report/Finanz%20Dashboard?jahr=' + yearStr;
 	$('#fd-umsatz-rows').html(
-		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green') +
-		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple') +
-		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass) +
-		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass)
+		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', btEinLink) +
+		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple', rpLink) +
+		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass, rpLink) +
+		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass, rpLink)
 	);
 
 	// Liquidität box — Burnrate in Brutto like Excel
 	var deltaClass = liqDelta === null ? '' : (liqDelta >= 0 ? 'fd-color-green' : 'fd-color-red');
 	var deltaStr = liqDelta === null ? '—' : (liqDelta >= 0 ? '+' : '') + fmt(liqDelta);
+	var snapLink = '/app/liquiditaet-snapshot';
 	$('#fd-liq-rows').html(
-		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue') +
-		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue') +
+		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue', rpLink) +
+		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue', snapLink) +
 		fdRow('Differenz (Bank − Snapshot)', deltaStr, deltaClass) +
 		fdRow('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
-		fdRow('Burnrate / Tag (Brutto)', fmt(burnTag, 2), 'fd-color-purple') +
-		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple')
+		fdRow('Burnrate / Tag (Brutto)', fmt(burnTag, 2), 'fd-color-purple', rpLink) +
+		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple', rpLink)
 	);
 
-	// SPEC 2: Always exclude the current calendar month from charts.
-	// A running month always has incomplete data — exclude it unconditionally.
-	var activeMonths = monthlyRows.filter(function (r) {
+	// G&V chart: all months with data including current (partial) month
+	var gvMonths = monthlyRows.filter(function (r) {
+		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
+		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
+		return ein > 0 || aus > 0;
+	});
+
+	// Burnrate chart: exclude current month — incomplete month creates misleading nosedive
+	var burnMonths = monthlyRows.filter(function (r) {
 		var monat = r.monat !== undefined ? r.monat : r[0];
 		var ein = r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0);
 		var aus = r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0);
@@ -205,24 +221,32 @@ function processReport(rows, jahr) {
 		return ein > 0 || aus > 0;
 	});
 
-	var labels = activeMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
-	var einnahmen = activeMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
-	var ausgaben = activeMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
-	var liquiditaet = activeMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
-	var burnrate = activeMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
+	var gvLabels = gvMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
+	var einnahmen = gvMonths.map(function (r) { return r.einnahmen_brutto !== undefined ? r.einnahmen_brutto : (r[4] || 0); });
+	var ausgaben = gvMonths.map(function (r) { return r.ausgaben_brutto !== undefined ? r.ausgaben_brutto : (r[5] || 0); });
+	var liquiditaet = gvMonths.map(function (r) { return r.liq_brutto !== undefined ? r.liq_brutto : (r[7] || 0); });
 
-	window.fd_chart_data = { labels: labels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
+	var burnLabels = burnMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
+	var burnrate = burnMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
+
+	window.fd_chart_data = { labels: gvLabels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
 	if (window.fd_chart_js_loaded) {
-		buildGVChart(labels, einnahmen, ausgaben, liquiditaet);
-		buildBurnChart(labels, burnrate);
+		buildGVChart(gvLabels, einnahmen, ausgaben, liquiditaet);
+		buildBurnChart(burnLabels, burnrate);
 	}
 }
 
-function fdRow(label, val, valClass) {
-	return '<div class="fd-row"><span class="fd-row-label">' + label + '</span><span class="fd-row-val ' + (valClass || '') + '">' + val + '</span></div>';
+function fdRow(label, val, valClass, link) {
+	var valHtml = link
+		? '<a href="' + link + '" target="_blank" class="fd-row-val fd-link-val ' + (valClass || '') + '">' + val + '</a>'
+		: '<span class="fd-row-val ' + (valClass || '') + '">' + val + '</span>';
+	return '<div class="fd-row"><span class="fd-row-label">' + label + '</span>' + valHtml + '</div>';
 }
-function fdRowTotal(label, val, valClass) {
-	return '<div class="fd-row fd-row-total"><span class="fd-row-label">' + label + '</span><span class="fd-row-val ' + (valClass || '') + '">' + val + '</span></div>';
+function fdRowTotal(label, val, valClass, link) {
+	var valHtml = link
+		? '<a href="' + link + '" target="_blank" class="fd-row-val fd-link-val ' + (valClass || '') + '">' + val + '</a>'
+		: '<span class="fd-row-val ' + (valClass || '') + '">' + val + '</span>';
+	return '<div class="fd-row fd-row-total"><span class="fd-row-label">' + label + '</span>' + valHtml + '</div>';
 }
 
 function buildGVChart(labels, einnahmen, ausgaben, liquiditaet) {
@@ -307,9 +331,11 @@ function loadAngebote() {
 			var html = '';
 			Object.keys(byCompany).forEach(function (co) {
 				var d = byCompany[co];
-				html += '<div class="fd-row"><span class="fd-row-label">' + co + '<span class="fd-badge">' + d.count + '</span></span><span class="fd-row-val fd-color-blue">' + fmt(d.total) + '</span></div>';
+				var coLink = '/app/quotation?company=' + encodeURIComponent(co) + '&docstatus=1&status=%5B%22not+in%22%2C%5B%22Ordered%22%2C%22Partially+Ordered%22%2C%22Cancelled%22%2C%22Lost%22%5D%5D&view=Report';
+				html += '<div class="fd-row"><span class="fd-row-label">' + co + '<span class="fd-badge">' + d.count + '</span></span><a href="' + coLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(d.total) + '</a></div>';
 			});
-			html += '<div class="fd-row fd-row-total"><span class="fd-row-label">Total <span class="fd-badge">' + totalCount + '</span></span><span class="fd-row-val fd-color-green">' + fmt(total) + '</span></div>';
+			var totalLink = '/app/quotation?docstatus=1&status=%5B%22not+in%22%2C%5B%22Ordered%22%2C%22Partially+Ordered%22%2C%22Cancelled%22%2C%22Lost%22%5D%5D&view=Report';
+			html += '<div class="fd-row fd-row-total"><span class="fd-row-label">Total <span class="fd-badge">' + totalCount + '</span></span><a href="' + totalLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>';
 			$('#fd-angebote-rows').html(html);
 		}
 	});
@@ -331,9 +357,9 @@ function loadOutstanding() {
 			});
 			var total = unbilled + invoicedNotPaid;
 			$('#fd-outstanding-rows').html(
-				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><span class="fd-row-val fd-color-blue">' + fmt(unbilled) + '</span></div>' +
-				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><span class="fd-row-val fd-color-amber">' + fmt(invoicedNotPaid) + '</span></div>' +
-				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><span class="fd-row-val fd-color-green">' + fmt(total) + '</span></div>'
+				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="/app/sales-order?view=Report&docstatus=1&status%5B%5D=To+Bill&status%5B%5D=Partly+Billed" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
+				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="/app/sales-invoice?view=Report&docstatus=1&status=Unpaid" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
+				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><a href="/app/query-report/Outstanding%20Report" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>'
 			);
 		}
 	});
