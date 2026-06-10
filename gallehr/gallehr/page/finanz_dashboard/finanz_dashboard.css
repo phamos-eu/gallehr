@@ -368,3 +368,13 @@
 .fd-snap-del-btn:hover {
   color: #E24B4A;
 }
+
+.fd-link-val {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.fd-link-val:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
