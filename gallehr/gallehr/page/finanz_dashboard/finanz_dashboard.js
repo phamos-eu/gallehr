@@ -182,8 +182,8 @@ function processReport(rows, jahr) {
 
 	// Umsatz box: 4 rows
 	var yearStr = String(jahr);
-	var btLink = '/app/bank-transaction?docstatus=1&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
-	var btEinLink = '/app/bank-transaction?docstatus=1&deposit=>0&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
+	var btLink = '/app/bank-transaction?view=Report&docstatus=1&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
+	var btEinLink = '/app/bank-transaction?view=Report&docstatus=1&deposit=>0&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
 	var rpLink = '/app/query-report/Finanz%20Dashboard?jahr=' + yearStr;
 	$('#fd-umsatz-rows').html(
 		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', btEinLink) +
@@ -331,12 +331,10 @@ function loadAngebote() {
 			var html = '';
 			Object.keys(byCompany).forEach(function (co) {
 				var d = byCompany[co];
-				var coFilterJson = encodeURIComponent(JSON.stringify([["status", "not in", ["Ordered", "Partially Ordered", "Cancelled", "Lost"]], ["docstatus", "=", 1], ["company", "=", co]]));
-				var coLink = '/app/quotation?filters=' + coFilterJson;
+				var coLink = '/app/quotation?company=' + encodeURIComponent(co) + '&docstatus=1&status=%5B%22not+in%22%2C%5B%22Ordered%22%2C%22Partially+Ordered%22%2C%22Cancelled%22%2C%22Lost%22%5D%5D&view=Report';
 				html += '<div class="fd-row"><span class="fd-row-label">' + co + '<span class="fd-badge">' + d.count + '</span></span><a href="' + coLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(d.total) + '</a></div>';
 			});
-			var totalFilterJson = encodeURIComponent(JSON.stringify([["status", "not in", ["Ordered", "Partially Ordered", "Cancelled", "Lost"]], ["docstatus", "=", 1]]));
-			var totalLink = '/app/quotation?filters=' + totalFilterJson;
+			var totalLink = '/app/quotation?docstatus=1&status=%5B%22not+in%22%2C%5B%22Ordered%22%2C%22Partially+Ordered%22%2C%22Cancelled%22%2C%22Lost%22%5D%5D&view=Report';
 			html += '<div class="fd-row fd-row-total"><span class="fd-row-label">Total <span class="fd-badge">' + totalCount + '</span></span><a href="' + totalLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>';
 			$('#fd-angebote-rows').html(html);
 		}
@@ -359,8 +357,8 @@ function loadOutstanding() {
 			});
 			var total = unbilled + invoicedNotPaid;
 			$('#fd-outstanding-rows').html(
-				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="/app/sales-order?docstatus=1&status%5B%5D=To+Bill&status%5B%5D=Partly+Billed" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
-				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="/app/sales-invoice?docstatus=1&status=Unpaid" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
+				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="/app/sales-order?view=Report&docstatus=1&status%5B%5D=To+Bill&status%5B%5D=Partly+Billed" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
+				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="/app/sales-invoice?view=Report&docstatus=1&status=Unpaid" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
 				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><a href="/app/query-report/Outstanding%20Report" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>'
 			);
 		}
