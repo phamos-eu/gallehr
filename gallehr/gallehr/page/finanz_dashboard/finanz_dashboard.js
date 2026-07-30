@@ -227,6 +227,15 @@ function processReport(rows, jahr) {
 	var realClass = realLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
 	var vorrClass = vorrLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
 
+	// Deckungsgrad: deckt das bereits Gesicherte (Ist + Outstanding) das Soll,
+	// ganz ohne dass ein Angebot konvertiert? Keine neue Kennzahl -- rechnerisch
+	// identisch mit dem Vorzeichen von realLuecke (>=0 <=> Deckungsgrad >=100%),
+	// hier nur als eigene, direkt unter Vorr. Umsatzlücke platzierte Prozentzahl
+	// ausgewiesen, damit die Antwort nicht implizit im Vorzeichen versteckt ist.
+	var outstanding = peur('Outstanding');
+	var deckungsgrad = soll > 0 ? (ist + outstanding) / soll * 100 : 0;
+	var deckungClass = deckungsgrad >= 100 ? 'fd-color-green' : 'fd-color-red';
+
 	// Umsatz box: 4 rows
 	// Every value links into the Finanz Dashboard report carrying the *current*
 	// filter values, so the report reproduces exactly the number shown here.
@@ -238,7 +247,8 @@ function processReport(rows, jahr) {
 		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', rpLink) +
 		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple', rpLink) +
 		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass, rpLink) +
-		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass, rpLink)
+		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass, rpLink) +
+		fdRowTotal('Deckungsgrad', fmtN(deckungsgrad, 0) + ' %', deckungClass, rpLink)
 	);
 
 	// Liquidität box — Burnrate in Brutto like Excel
