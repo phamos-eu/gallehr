@@ -178,6 +178,7 @@ def run():
 		' )',
 		{"von": von, "bis": bis}, as_dict=True)[0]
 	expected_avg = float(periode_check["ausgaben"] or 0) / periode_check["tage"]
+	expected_monat = float(periode_check["ausgaben"] or 0) / (29 / 31.0)
 
 	without_periode = snapshot()
 	with_periode = snapshot({"burnrate_von": von, "burnrate_bis": bis})
@@ -186,11 +187,13 @@ def run():
 	expected_soll_delta = (expected_avg - without_periode["Burnrate/Tag verwendet"]) * 365
 	print(f"\n  independently computed avg daily burn for {von}..{bis}: {expected_avg:,.2f}")
 	print(f"  expected: Burnrate/Tag verwendet == {expected_avg:,.2f} exactly,")
-	print(f"            Burnrate/Monat unaffected (still pure auto average),")
+	print(f"            Burnrate/Monat == {expected_monat:,.2f} (Ausgaben / exakte Monatsanteile),")
 	print(f"            Umsatz Soll shifts by {expected_soll_delta:+,.2f}, Reale & Vorr. Umsatzluecke shift by {-expected_soll_delta:+,.2f} (same amount, opposite sign)")
 	ok4 = (
 		abs(with_periode["Burnrate/Tag verwendet"] - expected_avg) < 0.01
-		and abs(with_periode["Burnrate/Monat (Brutto)"] - without_periode["Burnrate/Monat (Brutto)"]) < 0.01
+		# Burnrate/Monat folgt seit 30.07.2026 dem Zeitraum: Ausgaben im Zeitraum
+		# geteilt durch die exakten Monatsanteile (01.07.-29.07. = 29/31 Monate).
+		and abs(with_periode["Burnrate/Monat (Brutto)"] - expected_monat) < 1.0
 		and abs(with_periode["Umsatz Soll (Brutto/Jahr)"] - without_periode["Umsatz Soll (Brutto/Jahr)"] - expected_soll_delta) < 0.5
 		and abs(with_periode["Reale Umsatzluecke (Ist+Out-Soll)"] - without_periode["Reale Umsatzluecke (Ist+Out-Soll)"] + expected_soll_delta) < 0.5
 		and abs(with_periode["Vorraussichtliche Umsatzluecke (Absehbar-Soll)"] - without_periode["Vorraussichtliche Umsatzluecke (Absehbar-Soll)"] + expected_soll_delta) < 0.5
