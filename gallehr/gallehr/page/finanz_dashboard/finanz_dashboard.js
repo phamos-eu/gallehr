@@ -119,6 +119,22 @@ function getFilters() {
 	};
 }
 
+// Deep-link into the Finanz Dashboard query-report using the same filter values
+// that produced the numbers on screen -- built from getFilters() so there is
+// exactly one source of truth. Empty/zero values are omitted: the report script
+// treats 0 as "not set" (it checks `> 0`), so forcing them into the URL would
+// change the result. Only declared report filters can be passed this way.
+function buildReportLink() {
+	var f = getFilters();
+	var params = ['jahr=' + encodeURIComponent(f.jahr)];
+	if (f.aktuell_liquiditaet > 0) params.push('aktuell_liquiditaet=' + f.aktuell_liquiditaet);
+	if (f.start_liquiditaet > 0) params.push('start_liquiditaet=' + f.start_liquiditaet);
+	if (f.angebotsumwandlung) params.push('angebotsumwandlung=' + f.angebotsumwandlung);
+	if (f.burnrate_von) params.push('burnrate_von=' + encodeURIComponent(f.burnrate_von));
+	if (f.burnrate_bis) params.push('burnrate_bis=' + encodeURIComponent(f.burnrate_bis));
+	return '/app/query-report/Finanz%20Dashboard?' + params.join('&');
+}
+
 function fmt(val, decimals) {
 	if (val === null || val === undefined || isNaN(val)) return '—';
 	decimals = decimals !== undefined ? decimals : 0;
@@ -208,12 +224,14 @@ function processReport(rows, jahr) {
 	var vorrClass = vorrLuecke >= 0 ? 'fd-color-green' : 'fd-color-red';
 
 	// Umsatz box: 4 rows
-	var yearStr = String(jahr);
-	var btLink = '/app/bank-transaction?view=Report&docstatus=1&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
-	var btEinLink = '/app/bank-transaction?view=Report&docstatus=1&deposit=>0&date=%5B%22Between%22%2C%5B%22' + yearStr + '-01-01%22%2C%22' + yearStr + '-12-31%22%5D%5D';
-	var rpLink = '/app/query-report/Finanz%20Dashboard?jahr=' + yearStr;
+	// Every value links into the Finanz Dashboard report carrying the *current*
+	// filter values, so the report reproduces exactly the number shown here.
+	// Verifying against a doctype list view is not possible: a list view can
+	// only show stored fields (Brutto) and would need the report's WHERE clause
+	// reimplemented as URL params -- two sources of truth that drift apart.
+	var rpLink = buildReportLink();
 	$('#fd-umsatz-rows').html(
-		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', btEinLink) +
+		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', rpLink) +
 		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple', rpLink) +
 		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass, rpLink) +
 		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass, rpLink)
@@ -222,7 +240,8 @@ function processReport(rows, jahr) {
 	// Liquidität box — Burnrate in Brutto like Excel
 	var deltaClass = liqDelta === null ? '' : (liqDelta >= 0 ? 'fd-color-green' : 'fd-color-red');
 	var deltaStr = liqDelta === null ? '—' : (liqDelta >= 0 ? '+' : '') + fmt(liqDelta);
-	var snapLink = '/app/liquiditaet-snapshot';
+	// Only the snapshot actually used by the report (als_standard = 1)
+	var snapLink = '/app/liquiditaet-snapshot?als_standard=1';
 	$('#fd-liq-rows').html(
 		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue', rpLink) +
 		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue', snapLink) +
@@ -383,10 +402,17 @@ function loadOutstanding() {
 				else if (type === 'Invoiced Not Paid') invoicedNotPaid += iAmt;
 			});
 			var total = unbilled + invoicedNotPaid;
+			// All three link into Outstanding Report -- the report these numbers are
+			// summed from, one row per document, with the Netto columns visible and a
+			// Type column separating the two buckets. The previous links pointed at
+			// filtered Sales Order / Sales Invoice list views whose filters did not
+			// match the report's WHERE clause (e.g. status "To Deliver and Bill" was
+			// excluded, and list views show Brutto, not the Netto shown here).
+			var outLink = '/app/query-report/Outstanding%20Report';
 			$('#fd-outstanding-rows').html(
-				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="/app/sales-order?view=Report&docstatus=1&status%5B%5D=To+Bill&status%5B%5D=Partly+Billed" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
-				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="/app/sales-invoice?view=Report&docstatus=1&status=Unpaid" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
-				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><a href="/app/query-report/Outstanding%20Report" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>'
+				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
+				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
+				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>'
 			);
 		}
 	});
