@@ -35,8 +35,22 @@
       <input type="number" id="fd-umwandlung" class="form-control form-control-sm" value="30">
     </div>
     <div class="fd-fg">
-      <label>Burnrate/Tag manuell (Brutto)</label>
-      <input type="number" id="fd-burnrate" class="form-control form-control-sm" placeholder="leer = auto">
+      <label>Zeitraum für Burnrate</label>
+      <select id="fd-burnrate-periode" class="form-control form-control-sm">
+        <option value="">leer = seit Jahresbeginn</option>
+        <option value="3">Letzte 3 Monate</option>
+        <option value="6">Letzte 6 Monate</option>
+        <option value="12">Letzte 12 Monate</option>
+        <option value="custom">Benutzerdefiniert...</option>
+      </select>
+    </div>
+    <div class="fd-fg" id="fd-burnrate-custom-von" style="display:none;">
+      <label>Burnrate von</label>
+      <input type="date" id="fd-burnrate-von" class="form-control form-control-sm">
+    </div>
+    <div class="fd-fg" id="fd-burnrate-custom-bis" style="display:none;">
+      <label>Burnrate bis</label>
+      <input type="date" id="fd-burnrate-bis" class="form-control form-control-sm">
     </div>
     <button class="btn btn-sm btn-primary fd-apply-btn">Anwenden</button>
   </div>

@@ -23,6 +23,9 @@ fixtures = [
     ]},
     {"dt": "Property Setter", "filters": [
         ["module", "=", "Gallehr"]
+    ]},
+    {"dt": "Report", "filters": [
+        ["name", "in", ["Finanz Dashboard", "Outstanding Report"]]
     ]}
 ]
 

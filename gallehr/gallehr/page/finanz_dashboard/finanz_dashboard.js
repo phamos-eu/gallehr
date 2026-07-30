@@ -41,11 +41,17 @@ function bindEvents() {
 	});
 
 	// Enter key on any filter input triggers Anwenden
-	$(document).on('keydown', '#fd-jahr, #fd-aktuell, #fd-liq, #fd-umwandlung, #fd-burnrate', function (e) {
+	$(document).on('keydown', '#fd-jahr, #fd-aktuell, #fd-liq, #fd-umwandlung, #fd-burnrate-von, #fd-burnrate-bis', function (e) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
 			applyFilters();
 		}
+	});
+
+	// Burnrate-Zeitraum: show/hide the custom von/bis fields
+	$(document).on('change', '#fd-burnrate-periode', function () {
+		var isCustom = $(this).val() === 'custom';
+		$('#fd-burnrate-custom-von, #fd-burnrate-custom-bis').toggle(isCustom);
 	});
 
 	// Mutual exclusion: Aktuell clears Start, Start clears Aktuell
@@ -82,13 +88,34 @@ function parseDE(val) {
 	return parseFloat((val || '').replace(',', '.'));
 }
 
+function isoDate(d) {
+	return d.toISOString().slice(0, 10);
+}
+
+function resolveBurnrateRange() {
+	var periode = $('#fd-burnrate-periode').val();
+	if (!periode) return { von: '', bis: '' };
+	if (periode === 'custom') {
+		return { von: $('#fd-burnrate-von').val() || '', bis: $('#fd-burnrate-bis').val() || '' };
+	}
+	// Preset: last N calendar months up to today, resolved here so the
+	// backend only ever sees a concrete date range -- one code path.
+	var months = parseInt(periode, 10);
+	var bis = new Date();
+	var von = new Date();
+	von.setMonth(von.getMonth() - months);
+	return { von: isoDate(von), bis: isoDate(bis) };
+}
+
 function getFilters() {
+	var burnrate = resolveBurnrateRange();
 	return {
 		jahr: $('#fd-jahr').val() || '2026',
 		aktuell_liquiditaet: parseDE($('#fd-aktuell').val()) || 0,
 		start_liquiditaet: parseDE($('#fd-liq').val()) || 0,
 		angebotsumwandlung: parseDE($('#fd-umwandlung').val()) || 30,
-		avg_aus_tag_manuell: parseDE($('#fd-burnrate').val()) || 0
+		burnrate_von: burnrate.von,
+		burnrate_bis: burnrate.bis
 	};
 }
 
