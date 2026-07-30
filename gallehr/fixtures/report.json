@@ -1,0 +1,181 @@
+[
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [
+   {
+    "default": "2026",
+    "fieldname": "jahr",
+    "fieldtype": "Select",
+    "label": "Jahr",
+    "mandatory": 0,
+    "options": "2024\n2025\n2026",
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "aktuell_liquiditaet",
+    "fieldtype": "Float",
+    "label": "Aktueller Kontostand (Brutto)",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "start_liquiditaet",
+    "fieldtype": "Float",
+    "label": "Start Liquidität Jan (Brutto)",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": "30",
+    "fieldname": "angebotsumwandlung",
+    "fieldtype": "Float",
+    "label": "Angebotsumwandlung %",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "burnrate_von",
+    "fieldtype": "Date",
+    "label": "Burnrate von",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "burnrate_bis",
+    "fieldtype": "Date",
+    "label": "Burnrate bis",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Finanz Dashboard",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   }
+  ],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-07-30 11:44:11.276245",
+  "module": "Accounts",
+  "name": "Finanz Dashboard",
+  "prepared_report": 0,
+  "query": null,
+  "ref_doctype": "Bank Transaction",
+  "reference_report": null,
+  "report_name": "Finanz Dashboard",
+  "report_script": "columns = [\n    {\"label\": \"Monat\",              \"fieldname\": \"monat\",            \"fieldtype\": \"Data\",     \"width\": 90},\n    {\"label\": \"Jahr\",               \"fieldname\": \"jahr\",             \"fieldtype\": \"Data\",     \"width\": 60},\n    {\"label\": \"Prognose (EUR)\",     \"fieldname\": \"prognose_eur\",     \"fieldtype\": \"Currency\", \"width\": 150},\n    {\"label\": \"Prognose (Zahl)\",    \"fieldname\": \"prognose_zahl\",    \"fieldtype\": \"Float\",    \"width\": 140},\n    {\"label\": \"Einnahmen Brutto\",   \"fieldname\": \"einnahmen_brutto\", \"fieldtype\": \"Currency\", \"width\": 140},\n    {\"label\": \"Ausgaben Brutto\",    \"fieldname\": \"ausgaben_brutto\",  \"fieldtype\": \"Currency\", \"width\": 140},\n    {\"label\": \"Saldo Brutto\",       \"fieldname\": \"saldo_brutto\",     \"fieldtype\": \"Currency\", \"width\": 120},\n    {\"label\": \"Liquiditaet Brutto\", \"fieldname\": \"liq_brutto\",       \"fieldtype\": \"Currency\", \"width\": 150},\n    {\"label\": \"Einnahmen Netto\",    \"fieldname\": \"einnahmen_netto\",  \"fieldtype\": \"Currency\", \"width\": 140},\n    {\"label\": \"Ausgaben Netto\",     \"fieldname\": \"ausgaben_netto\",   \"fieldtype\": \"Currency\", \"width\": 140},\n    {\"label\": \"Saldo Netto\",        \"fieldname\": \"saldo_netto\",      \"fieldtype\": \"Currency\", \"width\": 120},\n    {\"label\": \"Ausgaben/Tag Brutto\",\"fieldname\": \"ausgaben_tag\",     \"fieldtype\": \"Currency\", \"width\": 150},\n    {\"label\": \"Burnrate/M Brutto\",  \"fieldname\": \"burnrate_m\",       \"fieldtype\": \"Currency\", \"width\": 140},\n]\n\nfilters = filters or {}\ncurrent_year = str(filters.get(\"jahr\") or \"2026\")\nangebotsumwandlung = float(filters.get(\"angebotsumwandlung\") or 30)\n\ndef parse_de_float(val):\n    # FIX: handle German decimal comma (e.g. \"480522,72\" -> 480522.72)\n    if not val:\n        return 0.0\n    try:\n        return float(str(val).replace(\",\", \".\"))\n    except (ValueError, TypeError):\n        return 0.0\n\n# Burnrate-Zeitraum: replaces the old manual Burnrate/Tag override. If both\n# dates are set (either resolved from a preset -- 3/6/12 Monate -- or a\n# custom range in the UI), the average daily burn is computed strictly from\n# that window instead of the year-to-date auto-average. Empty -> unchanged\n# behaviour: full year since Jahresbeginn.\nburnrate_von = str(filters.get(\"burnrate_von\") or \"\")\nburnrate_bis = str(filters.get(\"burnrate_bis\") or \"\")\nuse_burnrate_periode = bool(burnrate_von) and bool(burnrate_bis)\n\naktuell_liq = parse_de_float(filters.get(\"aktuell_liquiditaet\"))\nstart_liq   = parse_de_float(filters.get(\"start_liquiditaet\"))\nuse_aktuell = aktuell_liq > 0\n\nsnapshot_datum = None\nif not use_aktuell and not start_liq:\n    try:\n        snap_result = frappe.db.sql(\n            'SELECT kontostand_brutto, datum FROM `tabLiquiditaet Snapshot`'\n            ' WHERE als_standard = 1 ORDER BY datum DESC LIMIT 1',\n            as_dict=True)\n        if snap_result:\n            aktuell_liq = float(snap_result[0].get(\"kontostand_brutto\") or 0)\n            snapshot_datum = snap_result[0].get(\"datum\")\n            use_aktuell = aktuell_liq > 0\n    except Exception:\n        pass\n\n# Store the raw snapshot value separately for display in dashboard\nsnapshot_liq = aktuell_liq\n\n# Calculate current_liq_brutto as: snapshot + all transactions AFTER snapshot date\n# This is Sebastian's formula: simpler, correct, no backwards/forwards derivation needed\nliq_seit_snapshot = 0\nif snapshot_liq > 0 and snapshot_datum:\n    try:\n        seit_result = frappe.db.sql(\n            'SELECT'\n            ' SUM(CASE WHEN deposit > 0 THEN deposit ELSE 0 END) AS ein,'\n            ' SUM(CASE WHEN withdrawal > 0 THEN withdrawal ELSE 0 END) AS aus'\n            ' FROM `tabBank Transaction`'\n            ' WHERE docstatus = 1 AND status != \"Cancelled\"'\n            ' AND creation > %(datum)s'\n            ' AND name NOT IN ('\n            '  SELECT document_name FROM `tabTag Link`'\n            '  WHERE document_type = \"Bank Transaction\" AND tag = \"Umbuchung\"'\n            ' )',\n            {\"datum\": snapshot_datum}, as_dict=True)\n        if seit_result and seit_result[0].get(\"ein\") is not None:\n            ein_seit = float(seit_result[0].get(\"ein\") or 0)\n            aus_seit = float(seit_result[0].get(\"aus\") or 0)\n            liq_seit_snapshot = ein_seit - aus_seit\n    except Exception:\n        pass\n\nMWST = 1.19\nMONATSNAMEN = [\"Jan\",\"Feb\",\"Mar\",\"Apr\",\"Mai\",\"Jun\",\"Jul\",\"Aug\",\"Sep\",\"Okt\",\"Nov\",\"Dez\"]\nTAGE_PRO_MONAT = [31,28,31,30,31,30,31,31,30,31,30,31]\n\nbank_data = frappe.db.sql(\n    'SELECT MONTH(date) AS monat_num,'\n    ' SUM(CASE WHEN deposit > 0 THEN deposit ELSE 0 END) AS einnahmen,'\n    ' SUM(CASE WHEN withdrawal > 0 THEN withdrawal ELSE 0 END) AS ausgaben'\n    ' FROM `tabBank Transaction`'\n    ' WHERE docstatus = 1 AND YEAR(date) = %(jahr)s AND status != \"Cancelled\"'\n    ' AND name NOT IN ('\n    '  SELECT document_name FROM `tabTag Link`'\n    '  WHERE document_type = \"Bank Transaction\" AND tag = \"Umbuchung\"'\n    ' )'\n    ' GROUP BY MONTH(date) ORDER BY MONTH(date)',\n    {\"jahr\": int(current_year)}, as_dict=True)\n\nbank_by_month = {}\nidx0 = 0\nwhile idx0 < len(bank_data):\n    row = bank_data[idx0]\n    bank_by_month[row.monat_num] = row\n    idx0 = idx0 + 1\n\nsalden_brutto = []\nm = 1\nwhile m <= 12:\n    bdata = bank_by_month.get(m, {})\n    ein_b = float(bdata.get(\"einnahmen\") or 0)\n    aus_b = float(bdata.get(\"ausgaben\") or 0)\n    salden_brutto.append(ein_b - aus_b)\n    m = m + 1\n\nif use_aktuell:\n    total_salden = 0\n    m = 1\n    while m <= 12:\n        bdata = bank_by_month.get(m, {})\n        has_data = float(bdata.get(\"einnahmen\") or 0) > 0 or float(bdata.get(\"ausgaben\") or 0) > 0\n        if has_data:\n            total_salden = total_salden + salden_brutto[m-1]\n        m = m + 1\n    start_jan_brutto = aktuell_liq - total_salden\n    liq_quelle = \"aktuell\"\nelse:\n    start_jan_brutto = start_liq\n    liq_quelle = \"start\"\n\nrows = []\nliq_brutto = start_jan_brutto\nm = 1\nwhile m <= 12:\n    monat_name = MONATSNAMEN[m-1]\n    tage = TAGE_PRO_MONAT[m-1]\n    bdata = bank_by_month.get(m, {})\n\n    ein_brutto = float(bdata.get(\"einnahmen\") or 0)\n    aus_brutto = float(bdata.get(\"ausgaben\") or 0)\n    saldo_brutto = ein_brutto - aus_brutto\n\n    ein_netto = ein_brutto / MWST\n    aus_netto = aus_brutto / MWST\n    saldo_netto = ein_netto - aus_netto\n\n    aus_tag_brutto = aus_brutto / tage if tage else 0\n    burnrate_m_brutto = aus_tag_brutto * 30\n\n    # Excel-Logik: start_liq ist der Ende-Januar Kontostand (hardcoded wie Excel H18)\n    # Januar wird nicht akkumuliert — nur als Startwert gesetzt\n    # Ab Februar wird normal akkumuliert\n    if m == 1 and start_liq > 0:\n        liq_brutto = start_jan_brutto  # = start_liq, kein Saldo addiert\n    else:\n        liq_brutto = liq_brutto + saldo_brutto\n\n    rows.append({\n        \"monat\": monat_name, \"jahr\": current_year,\n        \"prognose_eur\": 0, \"prognose_zahl\": 0,\n        \"einnahmen_brutto\": ein_brutto, \"ausgaben_brutto\": aus_brutto,\n        \"saldo_brutto\": saldo_brutto, \"liq_brutto\": liq_brutto,\n        \"einnahmen_netto\": ein_netto, \"ausgaben_netto\": aus_netto,\n        \"saldo_netto\": saldo_netto,\n        \"ausgaben_tag\": aus_tag_brutto,\n        \"burnrate_m\": burnrate_m_brutto,\n    })\n    m = m + 1\n\n# Excel-Logik: AVERAGEIF(I18:I29,\"<>#NV\") schliesst alle Monate MIT Daten ein,\n# auch den laufenden Monat (partial). \"<>#NV\" schliesst nur Monate ohne Daten aus.\n# Dasselbe gilt fuer Liquiditaet und Umsatz Ist.\n# Kein \"current month exclusion\" mehr — wie Excel.\ncurrent_month_num = frappe.utils.now_datetime().month\n\numsatz_ist = 0\ncurrent_liq_brutto = 0\ncurrent_liq_brutto_derived = 0\naus_tag_brutto_sum = 0\naus_brutto_sum = 0\nmonths_with_data = 0\nidx1 = 0\nwhile idx1 < len(rows):\n    r = rows[idx1]\n    if r[\"einnahmen_brutto\"] > 0 or r[\"ausgaben_brutto\"] > 0:\n        # Umsatz Ist: inkl. laufenden Monat (wie Excel E col SUMIF)\n        umsatz_ist = umsatz_ist + r[\"einnahmen_netto\"]\n        # Liquiditaet: immer updaten, auch laufender Monat (wie Excel Spalte H)\n        current_liq_brutto_derived = r[\"liq_brutto\"]\n        # Burnrate: alle Monate MIT Daten inkl. laufendem Monat\n        # wie Excel AVERAGEIF(I18:I29,\"<>#NV\") — schliesst nur leere Monate aus\n        if r[\"ausgaben_tag\"] > 0:\n            aus_tag_brutto_sum = aus_tag_brutto_sum + r[\"ausgaben_tag\"]\n            aus_brutto_sum = aus_brutto_sum + r[\"ausgaben_brutto\"]\n            months_with_data = months_with_data + 1\n    idx1 = idx1 + 1\n\n# I5-Aequivalent: Ø Ausgaben/Tag (wie Excel I5 = AVERAGEIF(I18:I29,\"<>#NV\")) -- year-to-date fallback\navg_aus_tag_brutto_auto = aus_tag_brutto_sum / months_with_data if months_with_data else 0\n# J5-Aequivalent: Ø echte Monatsausgaben (wie Excel J5 = AVERAGEIF(J18:J29,\"<>#NV\"))\n# Echter Monatsdurchschnitt, NICHT Tag*30 (Monate haben 28-31 Tage) -- always\n# the pure year-to-date auto value, independent of the Burnrate-Zeitraum below.\navg_aus_m_brutto_auto = aus_brutto_sum / months_with_data if months_with_data else 0\n\n# Sebastian's formula: snapshot + saldo since snapshot date (Snapshot-Modus)\n# Falls back to accumulated running balance if no snapshot available (Start-Liq-Modus)\nif snapshot_liq > 0 and snapshot_datum:\n    current_liq_brutto = snapshot_liq + liq_seit_snapshot\nelse:\n    current_liq_brutto = current_liq_brutto_derived\n\n# Burnrate-Zeitraum: average daily burn over an explicit von/bis window,\n# independent of `jahr` (can span a year boundary), same Umbuchung exclusion\n# as the main bank_data query above. Replaces the old avg_aus_tag_manuell.\navg_aus_tag_brutto_periode = 0\navg_aus_m_brutto_periode = 0\nmonate_im_zeitraum = 0.0\nif use_burnrate_periode:\n    periode_result = frappe.db.sql(\n        'SELECT SUM(CASE WHEN withdrawal > 0 THEN withdrawal ELSE 0 END) AS ausgaben,'\n        ' DATEDIFF(%(bis)s, %(von)s) + 1 AS tage'\n        ' FROM `tabBank Transaction`'\n        ' WHERE docstatus = 1 AND date BETWEEN %(von)s AND %(bis)s AND status != \"Cancelled\"'\n        ' AND name NOT IN ('\n        '  SELECT document_name FROM `tabTag Link`'\n        '  WHERE document_type = \"Bank Transaction\" AND tag = \"Umbuchung\"'\n        ' )',\n        {\"von\": burnrate_von, \"bis\": burnrate_bis}, as_dict=True)\n    if periode_result:\n        p_ausgaben = float(periode_result[0].get(\"ausgaben\") or 0)\n        p_tage = periode_result[0].get(\"tage\") or 0\n        avg_aus_tag_brutto_periode = p_ausgaben / p_tage if p_tage else 0\n\n        # Monate im Zeitraum EXAKT: je beruehrtem Monat der Anteil seiner\n        # tatsaechlichen Tage, statt pauschal mit 30 zu rechnen. 01.07.-29.07.\n        # sind 29 von 31 Julitagen = 0,935 Monate, nicht 29/30.\n        # Schaltjahre werden beruecksichtigt.\n        von_j = int(burnrate_von[0:4])\n        von_m = int(burnrate_von[5:7])\n        von_t = int(burnrate_von[8:10])\n        bis_j = int(burnrate_bis[0:4])\n        bis_m = int(burnrate_bis[5:7])\n        bis_t = int(burnrate_bis[8:10])\n        jj = von_j\n        mm = von_m\n        while (jj < bis_j) or (jj == bis_j and mm <= bis_m):\n            if mm == 2:\n                schaltjahr = (jj % 4 == 0 and (jj % 100 != 0 or jj % 400 == 0))\n                dim = 29 if schaltjahr else 28\n            else:\n                dim = TAGE_PRO_MONAT[mm - 1]\n            start_tag = von_t if (jj == von_j and mm == von_m) else 1\n            end_tag = bis_t if (jj == bis_j and mm == bis_m) else dim\n            if end_tag >= start_tag:\n                monate_im_zeitraum = monate_im_zeitraum + float(end_tag - start_tag + 1) / dim\n            mm = mm + 1\n            if mm > 12:\n                mm = 1\n                jj = jj + 1\n        avg_aus_m_brutto_periode = p_ausgaben / monate_im_zeitraum if monate_im_zeitraum else 0\n\nif use_burnrate_periode:\n    avg_aus_tag_brutto_final = avg_aus_tag_brutto_periode\n    burnrate_quelle = \"periode \" + burnrate_von + \" bis \" + burnrate_bis\nelse:\n    avg_aus_tag_brutto_final = avg_aus_tag_brutto_auto\n    burnrate_quelle = \"auto\"\n\n# Burnrate/Monat: ohne Burnrate-Zeitraum der echte Monatsdurchschnitt\n# (wie Excel J5 = AVERAGEIF(J18:J29)) -- NICHT Tag*30, da Monate 28-31 Tage\n# haben. Mit gesetztem Zeitraum gibt es kein Excel-Aequivalent (Teilmonate\n# lassen sich nicht als Monatsmittel bilden), daher dort Ausgaben geteilt\n# durch die exakte Anzahl Monate im Zeitraum (anteilige echte Monatstage).\n# Die Dashboard-Kachel liest genau diesen Wert aus dem Report, damit Kachel\n# und Report nicht auseinanderlaufen koennen.\nif use_burnrate_periode:\n    burnrate_m_brutto_final = avg_aus_m_brutto_periode\nelse:\n    burnrate_m_brutto_final = avg_aus_m_brutto_auto\n\numsatz_soll = avg_aus_tag_brutto_final * 365\n\ntage_ohne = current_liq_brutto / avg_aus_tag_brutto_final if avg_aus_tag_brutto_final else 0\nmonate_ohne = tage_ohne / 30\n\noutstanding_result = frappe.db.sql(\n    'SELECT'\n    ' IFNULL((SELECT SUM(so.net_total - IFNULL('\n    '  (SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item'\n    '   JOIN `tabSales Invoice` si ON si.name = si_item.parent'\n    '   WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0))'\n    ' FROM `tabSales Order` so'\n    ' WHERE so.docstatus = 1'\n    ' AND so.status NOT IN (\"Completed\", \"Cancelled\", \"Closed\")'\n    ' AND so.per_billed < 100'\n    ' AND so.name NOT IN (SELECT document_name FROM `tabTag Link`'\n    '  WHERE document_type = \"Sales Order\" AND tag = \"Zombie\")), 0)'\n    ' + IFNULL((SELECT SUM(si.outstanding_amount / 1.19)'\n    ' FROM `tabSales Invoice` si'\n    ' WHERE si.docstatus = 1 AND si.outstanding_amount > 0'\n    ' AND si.name NOT IN (SELECT document_name FROM `tabTag Link`'\n    '  WHERE document_type = \"Sales Invoice\" AND tag = \"Zombie\")), 0)'\n    ' AS total_outstanding',\n    as_dict=True)\noutstanding = float((outstanding_result[0].get(\"total_outstanding\") or 0)) if outstanding_result else 0\n\nangebote_result = frappe.db.sql(\n    'SELECT IFNULL(SUM(net_total), 0) AS total FROM `tabQuotation`'\n    ' WHERE docstatus = 1 AND status NOT IN (\"Ordered\", \"Partially Ordered\", \"Cancelled\", \"Lost\")',\n    as_dict=True)\nliegende_angebote = float((angebote_result[0].get(\"total\") or 0)) if angebote_result else 0\n\nangebots_anteil = liegende_angebote * (angebotsumwandlung / 100)\nabsehbarer_umsatz = umsatz_ist + outstanding + angebots_anteil\n\nreale_umsatzluecke = umsatz_ist + outstanding - umsatz_soll\nvorr_umsatzluecke  = absehbarer_umsatz - umsatz_soll\n\nE = {\"einnahmen_brutto\": 0, \"ausgaben_brutto\": 0, \"saldo_brutto\": 0, \"liq_brutto\": 0,\n     \"einnahmen_netto\": 0, \"ausgaben_netto\": 0, \"saldo_netto\": 0,\n     \"ausgaben_tag\": 0, \"burnrate_m\": 0}\n\nprows = [\n    dict(E, monat=\"---\",                                               jahr=\"\", prognose_eur=0,                                          prognose_zahl=0),\n    dict(E, monat=\"PROGNOSE \" + current_year,                          jahr=\"\", prognose_eur=0,                                          prognose_zahl=0),\n    dict(E, monat=\"Liq-Quelle (\" + liq_quelle + \")\",                   jahr=\"\", prognose_eur=aktuell_liq if use_aktuell else start_jan_brutto, prognose_zahl=0),\n    dict(E, monat=\"Abgeleiteter Start Jan (Brutto)\",                   jahr=\"\", prognose_eur=start_jan_brutto,                           prognose_zahl=0),\n    dict(E, monat=\"Burnrate/Tag auto (Brutto)\",                        jahr=\"\", prognose_eur=avg_aus_tag_brutto_auto,                    prognose_zahl=0),\n    dict(E, monat=\"Burnrate/Tag verwendet (\" + burnrate_quelle + \")\",  jahr=\"\", prognose_eur=avg_aus_tag_brutto_final,                   prognose_zahl=0),\n    dict(E, monat=\"Burnrate/Monat (Brutto)\",                           jahr=\"\", prognose_eur=burnrate_m_brutto_final,                    prognose_zahl=0),\n    dict(E, monat=\"Umsatz Soll (Brutto/Jahr)\",                         jahr=\"\", prognose_eur=umsatz_soll,                                prognose_zahl=0),\n    dict(E, monat=\"Umsatz Ist (Einnahmen YTD Netto)\",                  jahr=\"\", prognose_eur=umsatz_ist,                                 prognose_zahl=0),\n    dict(E, monat=\"Liquiditaet aktuell (Brutto)\",                      jahr=\"\", prognose_eur=current_liq_brutto,                         prognose_zahl=0),\n    dict(E, monat=\"Snapshot Kontostand (Brutto)\",                      jahr=\"\", prognose_eur=snapshot_liq,                               prognose_zahl=0),\n    dict(E, monat=\"Tage ohne Zahlungseingang\",                         jahr=\"\", prognose_eur=0,                                          prognose_zahl=tage_ohne),\n    dict(E, monat=\"Monate ohne Zahlungseingang\",                       jahr=\"\", prognose_eur=0,                                          prognose_zahl=monate_ohne),\n    dict(E, monat=\"Outstanding bestehende Auftraege\",                  jahr=\"\", prognose_eur=outstanding,                                prognose_zahl=0),\n    dict(E, monat=\"Reale Umsatzluecke (Ist+Out-Soll)\",                 jahr=\"\", prognose_eur=reale_umsatzluecke,                         prognose_zahl=0),\n    dict(E, monat=\"---\",                                               jahr=\"\", prognose_eur=0,                                          prognose_zahl=0),\n    dict(E, monat=\"Liegende Angebote\",                                 jahr=\"\", prognose_eur=liegende_angebote,                          prognose_zahl=0),\n    dict(E, monat=\"Angebotsumwandlung %\",                              jahr=\"\", prognose_eur=0,                                          prognose_zahl=angebotsumwandlung),\n    dict(E, monat=\"Angebots-Anteil\",                                   jahr=\"\", prognose_eur=angebots_anteil,                            prognose_zahl=0),\n    dict(E, monat=\"Absehbarer Umsatz (Ist+Out+Angebote)\",              jahr=\"\", prognose_eur=absehbarer_umsatz,                          prognose_zahl=0),\n    dict(E, monat=\"Vorraussichtliche Umsatzluecke (Absehbar-Soll)\",    jahr=\"\", prognose_eur=vorr_umsatzluecke,                          prognose_zahl=0),\n]\n\nidx2 = 0\nwhile idx2 < len(prows):\n    rows.append(prows[idx2])\n    idx2 = idx2 + 1\n\ndata = [columns, rows, None, None, None, False]\n",
+  "report_type": "Script Report",
+  "roles": [
+   {
+    "parent": "Finanz Dashboard",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Finanz Dashboard",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts Manager"
+   },
+   {
+    "parent": "Finanz Dashboard",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ },
+ {
+  "add_total_row": 1,
+  "add_translate_data": 0,
+  "columns": [],
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-05-19 16:47:24.262987",
+  "module": "Selling",
+  "name": "Outstanding Report",
+  "prepared_report": 0,
+  "query": null,
+  "ref_doctype": "Sales Order",
+  "reference_report": null,
+  "report_name": "Outstanding Report",
+  "report_script": "columns = [\n    {\"label\": \"Project\", \"fieldname\": \"project\", \"fieldtype\": \"Link\", \"options\": \"Project\", \"width\": 150},\n    {\"label\": \"Customer\", \"fieldname\": \"customer\", \"fieldtype\": \"Link\", \"options\": \"Customer\", \"width\": 80},\n    {\"label\": \"Sales Order\", \"fieldname\": \"sales_order\", \"fieldtype\": \"Link\", \"options\": \"Sales Order\", \"width\": 120},\n    {\"label\": \"Sales Invoice\", \"fieldname\": \"sales_invoice\", \"fieldtype\": \"Link\", \"options\": \"Sales Invoice\", \"width\": 120},\n    {\"label\": \"Order Date\", \"fieldname\": \"order_date\", \"fieldtype\": \"Date\", \"width\": 100},\n    {\"label\": \"Contract Netto\", \"fieldname\": \"contract_netto\", \"fieldtype\": \"Currency\", \"width\": 130},\n    {\"label\": \"Already Billed Netto\", \"fieldname\": \"already_billed_netto\", \"fieldtype\": \"Currency\", \"width\": 150},\n    {\"label\": \"Unbilled Netto\", \"fieldname\": \"unbilled_netto\", \"fieldtype\": \"Currency\", \"width\": 130},\n    {\"label\": \"Invoice Outstanding Netto\", \"fieldname\": \"invoice_outstanding_netto\", \"fieldtype\": \"Currency\", \"width\": 170},\n    {\"label\": \"Total Expected Netto\", \"fieldname\": \"total_expected_netto\", \"fieldtype\": \"Currency\", \"width\": 150},\n    {\"label\": \"Type\", \"fieldname\": \"type\", \"fieldtype\": \"Data\", \"width\": 140},\n    {\"label\": \"Status\", \"fieldname\": \"status\", \"fieldtype\": \"Data\", \"width\": 120},\n]\n\nsql = (\n    'SELECT so.project AS project, so.customer AS customer, so.name AS sales_order,'\n    ' \"\" AS sales_invoice, so.transaction_date AS order_date,'\n    ' so.net_total AS contract_netto,'\n    ' IFNULL((SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item'\n    ' JOIN `tabSales Invoice` si ON si.name = si_item.parent'\n    ' WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0) AS already_billed_netto,'\n    ' (so.net_total - IFNULL((SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item'\n    ' JOIN `tabSales Invoice` si ON si.name = si_item.parent'\n    ' WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0)) AS unbilled_netto,'\n    ' 0 AS invoice_outstanding_netto,'\n    ' (so.net_total - IFNULL((SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item'\n    ' JOIN `tabSales Invoice` si ON si.name = si_item.parent'\n    ' WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0)) AS total_expected_netto,'\n    ' CASE WHEN IFNULL((SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item'\n    ' JOIN `tabSales Invoice` si ON si.name = si_item.parent'\n    ' WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0) > 0'\n    ' THEN \"Partially Invoiced\" ELSE \"Not Yet Invoiced\" END AS type,'\n    ' so.status AS status'\n    ' FROM `tabSales Order` so'\n    ' WHERE so.docstatus = 1'\n    ' AND so.status NOT IN (\"Completed\", \"Cancelled\", \"Closed\")'\n    ' AND so.per_billed < 100'\n    ' AND (so.project IS NOT NULL OR so.project IS NULL)'\n    ' AND so.name NOT IN (SELECT document_name FROM `tabTag Link`'\n    ' WHERE document_type = \"Sales Order\" AND tag = \"Zombie\")'\n    ' UNION ALL'\n    ' SELECT si.project AS project, si.customer AS customer,'\n    ' IFNULL((SELECT si_item.sales_order FROM `tabSales Invoice Item` si_item'\n    ' WHERE si_item.parent = si.name AND si_item.sales_order IS NOT NULL AND si_item.sales_order != \"\"'\n    ' LIMIT 1), \"\") AS sales_order,'\n    ' si.name AS sales_invoice, si.posting_date AS order_date,'\n    ' 0 AS contract_netto,'\n    ' (si.net_total - (si.outstanding_amount / 1.19)) AS already_billed_netto,'\n    ' 0 AS unbilled_netto,'\n    ' (si.outstanding_amount / 1.19) AS invoice_outstanding_netto,'\n    ' (si.outstanding_amount / 1.19) AS total_expected_netto,'\n    ' \"Invoiced Not Paid\" AS type, si.status AS status'\n    ' FROM `tabSales Invoice` si'\n    ' WHERE si.docstatus = 1'\n    ' AND si.outstanding_amount > 0'\n    ' AND si.name NOT IN (SELECT document_name FROM `tabTag Link`'\n    ' WHERE document_type = \"Sales Invoice\" AND tag = \"Zombie\")'\n    ' ORDER BY project, order_date'\n    ' LIMIT 1000'\n)\n\nrows = frappe.db.sql(sql, as_dict=True)\n\ndata = [columns, rows, None, None, None, False]",
+  "report_type": "Script Report",
+  "roles": [
+   {
+    "parent": "Outstanding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Sales User"
+   },
+   {
+    "parent": "Outstanding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Sales Manager"
+   },
+   {
+    "parent": "Outstanding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Maintenance User"
+   },
+   {
+    "parent": "Outstanding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Accounts User"
+   },
+   {
+    "parent": "Outstanding Report",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Stock User"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
+ }
+]
