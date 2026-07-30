@@ -213,7 +213,11 @@ function processReport(rows, jahr) {
 	var liqDelta = (liqBrutto && snapLiq) ? liqBrutto - snapLiq : null;
 	var realLuecke = peur('Reale Umsatz');
 	var burnTag = peur('Burnrate/Tag verwendet');
-	var burnM = burnTag * 30;
+	// Read the report's own Burnrate/Monat instead of recomputing burnTag * 30 here:
+	// the report uses the echten Monatsdurchschnitt (Excel J5 = AVERAGEIF) when no
+	// Burnrate-Zeitraum is set, which is NOT the same as Tagessatz * 30. Recomputing
+	// it here made the tile disagree with the report it links to (1.827,34 EUR apart).
+	var burnM = peur('Burnrate/Monat');
 	var tage = pzahl('Tage ohne');
 	var monate = pzahl('Monate ohne');
 
