@@ -1,0 +1,32 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2018-10-16 12:28:43.651915",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2025-05-08 13:30:55.890838",
+ "modified_by": "Administrator",
+ "module": "Gallehr",
+ "name": "Review",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "SELECT\n  `tabQuality Action`.name as \"Name:Data:200\",\n  `tabQuality Action`.corrective_preventive as \"Action:Select/[Corrective,Preventive]:200\",\n  `tabQuality Action`.document_type as \"Document Type:Select/[Quality Review, Quality Feedback]:200\",\n  `tabQuality Action`.date as \"Date:Date:120\",\n  `tabQuality Action`.status as \"Status:Select/Planned:150\"\nFROM\n  `tabQuality Action`\nWHERE\n  `tabQuality Action`.document_type='Quality Review'\n  \n  ",
+ "ref_doctype": "Quality Action",
+ "report_name": "Review",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Quality Manager"
+  }
+ ],
+ "timeout": 0
+}
