@@ -18,7 +18,11 @@ def run():
 
 	for rec in records:
 		name = rec["name"]
-		doc = frappe.get_doc("Report", name)
+		if frappe.db.exists("Report", name):
+			doc = frappe.get_doc("Report", name)
+		else:
+			doc = frappe.new_doc("Report")
+			doc.report_name = name
 		for field in ("report_script", "report_type", "module", "ref_doctype",
 				"disabled", "prepared_report", "add_total_row"):
 			if field in rec:

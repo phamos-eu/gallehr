@@ -25,7 +25,7 @@ fixtures = [
         ["module", "=", "Gallehr"]
     ]},
     {"dt": "Report", "filters": [
-        ["name", "in", ["Finanz Dashboard", "Outstanding Report"]]
+        ["name", "in", ["Finanz Dashboard", "Outstanding Report", "Projekt Übersicht"]]
     ]}
 ]
 
