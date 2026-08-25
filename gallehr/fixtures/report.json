@@ -177,5 +177,100 @@
   ],
   "snapshot_report": 0,
   "timeout": 0
+ },
+ {
+  "add_total_row": 0,
+  "add_translate_data": 0,
+  "disable_prepared_report_automation": 0,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Report",
+  "doctype_to_sync": [],
+  "filters": [
+   {
+    "default": null,
+    "fieldname": "von",
+    "fieldtype": "Date",
+    "label": "Von",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Projekt Übersicht",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": null,
+    "fieldname": "bis",
+    "fieldtype": "Date",
+    "label": "Bis",
+    "mandatory": 0,
+    "options": null,
+    "parent": "Projekt Übersicht",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": "Alle",
+    "fieldname": "status",
+    "fieldtype": "Select",
+    "label": "Status",
+    "mandatory": 0,
+    "options": "Alle\nOffen\nAbgeschlossen",
+    "parent": "Projekt Übersicht",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   },
+   {
+    "default": "Alle",
+    "fieldname": "unternehmen",
+    "fieldtype": "Link",
+    "label": "Unternehmen",
+    "mandatory": 0,
+    "options": "Company",
+    "parent": "Projekt Übersicht",
+    "parentfield": "filters",
+    "parenttype": "Report",
+    "wildcard_filter": 0
+   }
+  ],
+  "is_standard": "No",
+  "javascript": null,
+  "json": null,
+  "letter_head": null,
+  "modified": "2026-08-25 00:00:00.000000",
+  "module": "Selling",
+  "name": "Projekt Übersicht",
+  "prepared_report": 0,
+  "query": null,
+  "ref_doctype": "Sales Order",
+  "reference_report": null,
+  "report_name": "Projekt Übersicht",
+  "report_script": "\ncolumns = [\n\t{\"label\": \"View\", \"fieldname\": \"view\", \"fieldtype\": \"Data\", \"width\": 90},\n\t{\"label\": \"Bezeichnung\", \"fieldname\": \"label\", \"fieldtype\": \"Data\", \"width\": 260},\n\t{\"label\": \"Umsatz Netto\", \"fieldname\": \"umsatz\", \"fieldtype\": \"Currency\", \"width\": 140},\n\t{\"label\": \"Anteil %\", \"fieldname\": \"anteil\", \"fieldtype\": \"Percent\", \"width\": 100},\n\t{\"label\": \"Key\", \"fieldname\": \"key\", \"fieldtype\": \"Data\", \"width\": 160},\n]\n\nfilters = filters or {}\nvon = filters.get(\"von\")\nbis = filters.get(\"bis\")\nstatus_filter = filters.get(\"status\") or \"Alle\"\nunternehmen_filter = filters.get(\"unternehmen\") or \"Alle\"\n\n# Welche Project.status-Werte als \"abgeschlossen\" gelten -- alles andere zaehlt\n# als \"offen\" (fail-open: ein unbekannter/neuer Statuswert taucht lieber unter\n# \"offen\" auf, als beim Filtern stillschweigend zu verschwinden). Bestaetigt\n# per Skript A gegen Live (25.08.2026): Project.status hat nur drei reale\n# Werte -- Completed (529), Open (62), Cancelled (1). Die \"Gebucht\"/\"Offen\"-\n# Badges im Listenview sind `workflow_state` (eigenes Feld), nicht `status`.\nABGESCHLOSSEN_STATUS = [\"Completed\", \"Cancelled\"]\n\nstatus_clause = \"\"\nif status_filter == \"Abgeschlossen\":\n\tstatus_clause = \" AND p.status IN %(abgeschlossen)s\"\nelif status_filter == \"Offen\":\n\tstatus_clause = \" AND (p.status NOT IN %(abgeschlossen)s OR p.status IS NULL)\"\n\nunternehmen_clause = \"\"\nif unternehmen_filter and unternehmen_filter != \"Alle\":\n\tunternehmen_clause = \" AND p.company = %(unternehmen)s\"\n\n# Gallehrs eigene Unternehmen (GSR, GSS, ...) tauchen in Project.customer\n# gelegentlich als \"Kunde\" auf (Intercompany-Leistung, oder ein Datenfehler --\n# beides kommt vor, siehe Skript B Live 25.08.2026). Umsatz bleibt in Typ/\n# Projekt/PM unveraendert (echtes Geld, echter Auftrag), aber im Kunde-View\n# wird das klar markiert statt so auszusehen wie ein normaler externer Kunde.\nrows_raw = frappe.db.sql(\n\t\"SELECT so.net_total AS umsatz, \"\n\t\"IFNULL(p.project_type, 'Ohne Typ') AS typ, \"\n\t\"p.name AS proj_key, IFNULL(p.project_name, p.name) AS proj_label, \"\n\t\"p.customer AS kunde_key, \"\n\t\"CASE WHEN EXISTS (\"\n\t\"    SELECT 1 FROM `tabCompany` co WHERE co.name = p.customer OR co.name = c.customer_name\"\n\t\"  ) THEN CONCAT(IFNULL(c.customer_name, p.customer, 'Unbekannt'), ' (eigenes Unternehmen)')\"\n\t\"  ELSE IFNULL(c.customer_name, p.customer, 'Unbekannt')\"\n\t\"END AS kunde_label, \"\n\t\"JSON_UNQUOTE(JSON_EXTRACT(p.`_assign`, '$[0]')) AS pm_key, \"\n\t\"IFNULL(u.full_name, 'Kein PM zugewiesen') AS pm_label \"\n\t\"FROM `tabSales Order` so \"\n\t\"JOIN `tabProject` p ON p.name = so.project \"\n\t\"LEFT JOIN `tabCustomer` c ON c.name = p.customer \"\n\t\"LEFT JOIN `tabUser` u ON u.name = JSON_UNQUOTE(JSON_EXTRACT(p.`_assign`, '$[0]')) \"\n\t\"WHERE so.docstatus = 1 \"\n\t\"AND so.transaction_date BETWEEN %(von)s AND %(bis)s \"\n\t\"AND so.name NOT IN (\"\n\t\"  SELECT document_name FROM `tabTag Link`\"\n\t\"  WHERE document_type = 'Sales Order' AND tag = 'Zombie'\"\n\t\") \" + status_clause + unternehmen_clause,\n\t{\"von\": von, \"bis\": bis, \"abgeschlossen\": tuple(ABGESCHLOSSEN_STATUS), \"unternehmen\": unternehmen_filter},\n\tas_dict=True,\n)\n\n\ndef aggregate(rows, key_field, label_field):\n\tbuckets = {}\n\tfor r in rows:\n\t\tkey = r[key_field] or \"-\"\n\t\tlabel = r[label_field] or \"-\"\n\t\tif key not in buckets:\n\t\t\tbuckets[key] = {\"key\": key, \"label\": label, \"umsatz\": 0.0}\n\t\tbuckets[key][\"umsatz\"] = buckets[key][\"umsatz\"] + (r[\"umsatz\"] or 0.0)\n\treturn sorted(buckets.values(), key=lambda b: b[\"umsatz\"], reverse=True)\n\n\ngesamt = sum((r[\"umsatz\"] or 0.0) for r in rows_raw)\n\n\ndef emit(view_name, bucket_list, gesamt_umsatz):\n\tout = []\n\tfor b in bucket_list:\n\t\tanteil = (b[\"umsatz\"] / gesamt_umsatz * 100.0) if gesamt_umsatz else 0.0\n\t\tout.append({\n\t\t\t\"view\": view_name,\n\t\t\t\"label\": b[\"label\"],\n\t\t\t\"umsatz\": b[\"umsatz\"],\n\t\t\t\"anteil\": anteil,\n\t\t\t\"key\": b[\"key\"],\n\t\t})\n\t# Summenzeile je View -- eigener view-Wert (view_name + \"_gesamt\"), damit\n\t# das Dashboard (das nur \"typ\"/\"projekt\"/\"kunde\"/\"pm\" kennt) sie automatisch\n\t# ignoriert, waehrend sie im vollen Report direkt nach den echten Zeilen\n\t# dieser View als 100%-Kontrolle sichtbar bleibt.\n\tout.append({\n\t\t\"view\": view_name + \"_gesamt\",\n\t\t\"label\": \"— Gesamt —\",\n\t\t\"umsatz\": gesamt_umsatz,\n\t\t\"anteil\": 100.0 if gesamt_umsatz else 0.0,\n\t\t\"key\": \"\",\n\t})\n\treturn out\n\ndata_rows = []\ndata_rows += emit(\"typ\", aggregate(rows_raw, \"typ\", \"typ\"), gesamt)\ndata_rows += emit(\"projekt\", aggregate(rows_raw, \"proj_key\", \"proj_label\"), gesamt)\ndata_rows += emit(\"kunde\", aggregate(rows_raw, \"kunde_key\", \"kunde_label\"), gesamt)\ndata_rows += emit(\"pm\", aggregate(rows_raw, \"pm_key\", \"pm_label\"), gesamt)\n\ndata = [columns, data_rows, None, None, None, False]\n",
+  "report_type": "Script Report",
+  "roles": [
+   {
+    "parent": "Projekt Übersicht",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "System Manager"
+   },
+   {
+    "parent": "Projekt Übersicht",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Sales Manager"
+   },
+   {
+    "parent": "Projekt Übersicht",
+    "parentfield": "roles",
+    "parenttype": "Report",
+    "role": "Dashboard Manager"
+   }
+  ],
+  "snapshot_report": 0,
+  "timeout": 0
  }
 ]
