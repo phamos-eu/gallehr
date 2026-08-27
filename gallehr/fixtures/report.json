@@ -224,7 +224,7 @@
     "wildcard_filter": 0
    },
    {
-    "default": "Alle",
+    "default": null,
     "fieldname": "unternehmen",
     "fieldtype": "Link",
     "label": "Unternehmen",
