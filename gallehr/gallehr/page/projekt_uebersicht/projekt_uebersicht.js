@@ -61,11 +61,16 @@ function resolvePeriodRange() {
 
 function getFilters() {
 	var range = resolvePeriodRange();
+	var unternehmen = $('#po-unternehmen').val() || 'Alle';
 	return {
 		von: range.von,
 		bis: range.bis,
 		status: $('#po-status').val() || 'Alle',
-		unternehmen: $('#po-unternehmen').val() || 'Alle'
+		// unternehmen ist ein Link-Filter (Company) im Report -- "Alle" ist
+		// selbst kein echter Company-Datensatz, darf also nie als Wert
+		// rausgehen (sonst "Company Alle not found"). Leerer String statt
+		// "Alle" heisst fuer den Report "kein Filter", siehe report_script.
+		unternehmen: unternehmen === 'Alle' ? '' : unternehmen
 	};
 }
 
