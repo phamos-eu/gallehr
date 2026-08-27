@@ -208,11 +208,25 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var label = row.label !== undefined ? row.label : row[1];
 		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
 		var anteil = row.anteil !== undefined ? row.anteil : row[3];
+		var key = row.key !== undefined ? row.key : row[4];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
+
+		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
+		// Datensatz -- "key" ist dort Project.name bzw. Customer.name (siehe
+		// report_script: proj_key/kunde_key), damit der Nutzer von der
+		// Umsatzzahl sofort zum Projekt bzw. Kunden springen kann. Typ/PM
+		// haben keinen sinnvollen 1:1-Zieldatensatz hier.
+		var nameHtml = frappe.utils.escape_html(label);
+		if (prefix === 'proj' && key) {
+			nameHtml = '<a href="/app/project/' + encodeURIComponent(key) + '">' + nameHtml + '</a>';
+		} else if (prefix === 'kunde' && key) {
+			nameHtml = '<a href="/app/customer/' + encodeURIComponent(key) + '">' + nameHtml + '</a>';
+		}
+
 		html +=
 			'<div class="po-row">' +
 			'<span class="po-rank">' + (i + 1) + '</span>' +
-			'<span class="po-name" title="' + frappe.utils.escape_html(label) + '">' + frappe.utils.escape_html(label) + '</span>' +
+			'<span class="po-name" title="' + frappe.utils.escape_html(label) + '">' + nameHtml + '</span>' +
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
