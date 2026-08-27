@@ -187,6 +187,15 @@
   white-space: nowrap;
 }
 
+.po-row .po-name a {
+  color: inherit;
+}
+
+.po-row .po-name a:hover {
+  color: var(--text-color);
+  text-decoration: underline;
+}
+
 .po-row .po-amt {
   font-size: 12px;
   font-weight: 500;

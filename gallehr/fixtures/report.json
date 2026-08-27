@@ -237,7 +237,7 @@
    }
   ],
   "is_standard": "No",
-  "javascript": null,
+  "javascript": "// Report-Tabelle (Vollansicht) -- \"Projekt\"-Zeilen verlinken direkt auf\n// den zugrundeliegenden Project-Datensatz (data.key = Project.name aus\n// report_script), damit man von der Umsatzzahl sofort zu den Auftraegen\n// des Projekts springen kann. Andere Views (typ/kunde/pm) bleiben Text --\n// die Kunde-Verlinkung gibt es bewusst nur im Dashboard, nicht hier.\nfrappe.query_reports[\"Projekt \\u00dcbersicht\"] = {\n\tformatter: function (value, row, column, data, default_formatter) {\n\t\tvalue = default_formatter(value, row, column, data);\n\t\tif (column.fieldname === \"label\" && data.view === \"projekt\" && data.key) {\n\t\t\tvalue = '<a href=\"/app/project/' + encodeURIComponent(data.key) + '\">' + value + '</a>';\n\t\t}\n\t\treturn value;\n\t},\n};\n",
   "json": null,
   "letter_head": null,
   "modified": "2026-08-25 00:00:00.000000",
