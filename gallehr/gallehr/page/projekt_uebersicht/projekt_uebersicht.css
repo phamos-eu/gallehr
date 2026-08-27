@@ -1,0 +1,248 @@
+.projekt-uebersicht {
+  padding: 16px;
+  font-family: var(--font-stack);
+}
+
+.po-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.po-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.po-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+}
+
+.po-fg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.po-fg label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.po-fg .form-control {
+  min-width: 150px;
+  font-size: 12px;
+}
+
+.po-fg-divider {
+  width: 1px;
+  background: var(--border-color);
+  align-self: stretch;
+  margin: 0 4px;
+}
+
+.po-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.po-hero-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 4px;
+}
+
+.po-hero-value {
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.po-hero-meta {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.po-unassigned {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(186, 117, 23, 0.1);
+  border: 1px solid #BA7517;
+  border-radius: var(--border-radius);
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: var(--text-color);
+}
+
+.po-unassigned a {
+  font-size: 12px;
+  font-weight: 500;
+  color: #BA7517;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.po-unassigned a:hover {
+  text-decoration: underline;
+}
+
+.po-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.po-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.po-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.po-chip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.po-chip-typ { background: #BA7517; }
+.po-chip-proj { background: #378ADD; }
+.po-chip-kunde { background: #639922; }
+.po-chip-pm { background: #534AB7; }
+
+.po-card-head h2 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.po-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.po-rows {
+  padding: 4px 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.po-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto 44px;
+  grid-template-rows: auto 3px;
+  align-items: center;
+  row-gap: 3px;
+  column-gap: 8px;
+  padding: 6px 6px 5px;
+  border-radius: 6px;
+}
+
+.po-row .po-rank {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.po-row .po-name {
+  font-size: 12px;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.po-row .po-name a {
+  color: inherit;
+}
+
+.po-row .po-name a:hover {
+  color: var(--text-color);
+  text-decoration: underline;
+}
+
+.po-row .po-amt {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.po-row .po-pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.po-row .po-bar-track {
+  grid-column: 2 / 4;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--bg-color);
+  overflow: hidden;
+}
+
+.po-row .po-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.po-loading, .po-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 10px 4px;
+}
+
+.po-card-foot {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.po-card-foot a {
+  font-size: 10px;
+  color: #378ADD;
+  text-decoration: none;
+}
+
+.po-card-foot a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .po-grid { grid-template-columns: 1fr; }
+}

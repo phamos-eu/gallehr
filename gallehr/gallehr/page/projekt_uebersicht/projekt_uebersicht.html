@@ -1,0 +1,99 @@
+<div class="projekt-uebersicht">
+  <div class="po-header">
+    <h4 class="po-title">Projekt Übersicht</h4>
+    <button class="btn btn-sm btn-default po-refresh-btn">
+      <i class="ti ti-refresh"></i> Aktualisieren
+    </button>
+  </div>
+
+  <div class="po-filters">
+    <div class="po-fg">
+      <label>Zeitraum</label>
+      <select id="po-periode" class="form-control form-control-sm">
+        <option value="jahresbeginn" selected>Seit Jahresbeginn</option>
+        <option value="letztes_jahr">Letztes Jahr</option>
+        <option value="3m">Letzte 3 Monate</option>
+        <option value="custom">Benutzerdefiniert...</option>
+      </select>
+    </div>
+    <div class="po-fg" id="po-custom-von" style="display:none;">
+      <label>Von</label>
+      <input type="date" id="po-von" class="form-control form-control-sm">
+    </div>
+    <div class="po-fg" id="po-custom-bis" style="display:none;">
+      <label>Bis</label>
+      <input type="date" id="po-bis" class="form-control form-control-sm">
+    </div>
+    <div class="po-fg-divider"></div>
+    <div class="po-fg">
+      <label>Status</label>
+      <select id="po-status" class="form-control form-control-sm">
+        <option value="Alle" selected>Alle</option>
+        <option value="Offen">Offen</option>
+        <option value="Abgeschlossen">Abgeschlossen</option>
+      </select>
+    </div>
+    <div class="po-fg">
+      <label>Unternehmen</label>
+      <select id="po-unternehmen" class="form-control form-control-sm">
+        <option value="Alle" selected>Alle</option>
+      </select>
+    </div>
+    <button class="btn btn-sm btn-primary po-apply-btn">Anwenden</button>
+  </div>
+
+  <div class="po-hero">
+    <div>
+      <div class="po-hero-label">Gesamtumsatz im Zeitraum</div>
+      <div class="po-hero-value" id="po-hero-total">–</div>
+    </div>
+    <div class="po-hero-meta" id="po-hero-meta"></div>
+  </div>
+
+  <div class="po-unassigned" id="po-unassigned" style="display:none;">
+    <span id="po-unassigned-text"></span>
+    <a href="#" id="po-unassigned-link" target="_blank">Projekte anzeigen →</a>
+  </div>
+
+  <div class="po-grid">
+    <div class="po-card">
+      <div class="po-card-head">
+        <span class="po-chip po-chip-typ"></span>
+        <h2>Projekttyp</h2>
+        <span class="po-count" id="po-typ-count"></span>
+      </div>
+      <div class="po-rows" id="po-typ-rows"><div class="po-loading">Laden...</div></div>
+      <div class="po-card-foot"><a href="#" id="po-typ-link" target="_blank">Details im Report öffnen →</a></div>
+    </div>
+
+    <div class="po-card">
+      <div class="po-card-head">
+        <span class="po-chip po-chip-proj"></span>
+        <h2>Projekt</h2>
+        <span class="po-count" id="po-proj-count"></span>
+      </div>
+      <div class="po-rows" id="po-proj-rows"><div class="po-loading">Laden...</div></div>
+      <div class="po-card-foot"><a href="#" id="po-proj-link" target="_blank">Details im Report öffnen →</a></div>
+    </div>
+
+    <div class="po-card">
+      <div class="po-card-head">
+        <span class="po-chip po-chip-kunde"></span>
+        <h2>Kunde</h2>
+        <span class="po-count" id="po-kunde-count"></span>
+      </div>
+      <div class="po-rows" id="po-kunde-rows"><div class="po-loading">Laden...</div></div>
+      <div class="po-card-foot"><a href="#" id="po-kunde-link" target="_blank">Details im Report öffnen →</a></div>
+    </div>
+
+    <div class="po-card">
+      <div class="po-card-head">
+        <span class="po-chip po-chip-pm"></span>
+        <h2>PM</h2>
+        <span class="po-count" id="po-pm-count"></span>
+      </div>
+      <div class="po-rows" id="po-pm-rows"><div class="po-loading">Laden...</div></div>
+      <div class="po-card-foot"><a href="#" id="po-pm-link" target="_blank">Details im Report öffnen →</a></div>
+    </div>
+  </div>
+</div>
