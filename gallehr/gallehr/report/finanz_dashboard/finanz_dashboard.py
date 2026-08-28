@@ -75,6 +75,9 @@ def get_data(filters, columns):
 	# Filters on the transaction's own `date`, not `creation` (import timestamp) -- a
 	# late-imported historical transaction must not be re-counted as "since the snapshot"
 	# just because it landed in the DB after the snapshot was taken.
+	# Compared at day granularity (DATE(...) on both sides): Bank Transaction.date has no
+	# time-of-day component, so comparing it against the snapshot's full datetime would let
+	# MySQL coerce same-day transactions to midnight and silently drop the whole snapshot day.
 	liq_seit_snapshot = 0
 	if snapshot_liq > 0 and snapshot_datum:
 		seit_result = frappe.db.sql(
@@ -83,7 +86,7 @@ def get_data(filters, columns):
 			" SUM(CASE WHEN withdrawal > 0 THEN withdrawal ELSE 0 END) AS aus"
 			" FROM `tabBank Transaction`"
 			" WHERE docstatus = 1 AND status != 'Cancelled'"
-			" AND date > %(datum)s"
+			" AND DATE(date) > DATE(%(datum)s)"
 			" AND name NOT IN ("
 			"  SELECT document_name FROM `tabTag Link`"
 			"  WHERE document_type = 'Bank Transaction' AND tag = 'Umbuchung'"
