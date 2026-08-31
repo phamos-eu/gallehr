@@ -1,0 +1,61 @@
+<div class="ak-auswertung">
+  <div class="ak-header">
+    <h4 class="ak-title">AK Auswertung</h4>
+    <div class="ak-header-actions">
+      <button class="btn btn-sm btn-default ak-export-btn"><i class="ti ti-download"></i> Excel-Export</button>
+      <button class="btn btn-sm btn-default ak-refresh-btn"><i class="ti ti-refresh"></i> Aktualisieren</button>
+    </div>
+  </div>
+
+  <div class="ak-filters">
+    <div class="ak-fg">
+      <label>Von</label>
+      <input type="date" id="ak-von" class="form-control form-control-sm">
+    </div>
+    <div class="ak-fg">
+      <label>Bis</label>
+      <input type="date" id="ak-bis" class="form-control form-control-sm">
+    </div>
+    <div class="ak-fg-note">
+      Kostenstelle: <strong>Haupt - G</strong>
+      <span class="text-muted">(v1 — weitere Kostenstellen folgen in v2)</span>
+    </div>
+  </div>
+
+  <div class="ak-summary">
+    <div class="ak-summary-card">
+      <div class="ak-summary-label">Gesamt-Aufwand im Zeitraum</div>
+      <div class="ak-summary-value" id="ak-summe-gesamt">–</div>
+    </div>
+    <div class="ak-summary-card">
+      <div class="ak-summary-label">Davon bankabgeglichen</div>
+      <div class="ak-summary-value" id="ak-summe-abgeglichen">–</div>
+    </div>
+    <div class="ak-summary-card">
+      <div class="ak-summary-label">Aufwandskonten im Zeitraum</div>
+      <div class="ak-summary-value" id="ak-anzahl-konten">–</div>
+    </div>
+  </div>
+
+  <table class="table table-sm ak-table">
+    <thead>
+      <tr>
+        <th>Aufwandskonto</th>
+        <th class="ak-num">Buchungen</th>
+        <th class="ak-num">Netto EUR</th>
+        <th class="ak-num">Anteil</th>
+        <th>Bankabgleich</th>
+      </tr>
+    </thead>
+    <tbody id="ak-tbody">
+      <tr><td colspan="5" class="text-muted">Lade...</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ak-footnote">
+    Bankabgleich = Anteil der Buchungen dieses Kontos, die nachweislich ueber eine echte
+    Bank Transaction bezahlt wurden. Rot markierte Zeilen (unter 20%) sind Konten, bei denen
+    das meiste noch nicht nachvollziehbar ist — nicht zwingend ein Fehler (z.B. offene
+    Rechnungen), aber ein guter erster Blick.
+  </div>
+</div>
