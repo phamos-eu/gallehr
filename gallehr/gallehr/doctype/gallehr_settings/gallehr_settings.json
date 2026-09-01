@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "creation": "2026-08-31 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "christmas_list_section",
+  "christmas_dry_run",
+  "christmas_only_active_addresses",
+  "christmas_column_break",
+  "run_christmas_list_resolution",
+  "christmas_last_run",
+  "christmas_result_section",
+  "christmas_last_result"
+ ],
+ "fields": [
+  {
+   "fieldname": "christmas_list_section",
+   "fieldtype": "Section Break",
+   "label": "Christmas List"
+  },
+  {
+   "default": "1",
+   "description": "Report what would change without writing anything. Always run this first.",
+   "fieldname": "christmas_dry_run",
+   "fieldtype": "Check",
+   "label": "Dry Run"
+  },
+  {
+   "default": "0",
+   "description": "Ignore addresses marked as disabled. Switching this on resolves far fewer contacts.",
+   "fieldname": "christmas_only_active_addresses",
+   "fieldtype": "Check",
+   "label": "Use Active Addresses Only"
+  },
+  {
+   "fieldname": "christmas_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Fills every empty Christmas list field on every Contact. Values that are already set are never overwritten. Country is always written as an ISO 3166-1 alpha-3 code.",
+   "fieldname": "run_christmas_list_resolution",
+   "fieldtype": "Button",
+   "label": "Resolve Addresses Now"
+  },
+  {
+   "fieldname": "christmas_last_run",
+   "fieldtype": "Datetime",
+   "label": "Last Run",
+   "read_only": 1
+  },
+  {
+   "fieldname": "christmas_result_section",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "christmas_last_result",
+   "fieldtype": "Code",
+   "label": "Last Result",
+   "options": "Text",
+   "read_only": 1
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-31 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gallehr",
+ "name": "Gallehr Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
