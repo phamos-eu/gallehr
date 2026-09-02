@@ -8,7 +8,7 @@
  "owner": "Administrator",
  "page_name": "ak-auswertung",
  "restrict_to_domain": "",
- "roles": [{"role": "Dashboard Manager"}],
+ "roles": [{"role": "Dashboard Manager"}, {"role": "Accounts User"}],
  "system_page": 0,
  "title": "AK Auswertung"
 }
