@@ -208,6 +208,20 @@ def get_data(filters, columns):
 	else:
 		current_liq_brutto = current_liq_brutto_derived
 
+	# Graph-Korrektur (siehe gallehr-finanz-dashboard-snapshot-bug): die
+	# monatlichen liq_brutto-Werte oben (G&V-Graph) sind an aktuell_liq =
+	# snapshot_liq verankert -- also am ROHEN Snapshot-Wert, nicht an
+	# current_liq_brutto (der um "Bewegungen seit Snapshot" korrigierten Zahl).
+	# Dadurch wich der Graph systematisch um genau liq_seit_snapshot von der
+	# oben angezeigten "Liquiditaet aktuell" ab. Fix: die ganze Monatsreihe um
+	# diese Differenz verschieben, damit der aktuelle Punkt wieder exakt
+	# current_liq_brutto entspricht -- die monatlichen Veraenderungen (Salden)
+	# waren nie falsch, nur der Anker war es.
+	if snapshot_liq > 0 and snapshot_datum:
+		chart_korrektur = current_liq_brutto - current_liq_brutto_derived
+		for r in rows:
+			r["liq_brutto"] = r["liq_brutto"] + chart_korrektur
+
 	# Burnrate-Zeitraum: average daily burn over an explicit von/bis window,
 	# independent of `jahr` (can span a year boundary), same Umbuchung exclusion
 	# as the main bank_data query above. Replaces the old avg_aus_tag_manuell.
