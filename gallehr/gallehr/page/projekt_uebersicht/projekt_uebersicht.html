@@ -10,8 +10,14 @@
     <div class="po-fg">
       <label>Zeitraum</label>
       <select id="po-periode" class="form-control form-control-sm">
+        <!-- jahr_minus_1/jahr/jahr_plus_1 zeigen die echte Jahreszahl statt
+             eines Labels ("2025" statt "Letztes Jahr") -- Text wird beim Laden
+             per JS gesetzt (setYearOptionLabels()), damit die Seite nicht
+             jedes Jahr manuell angepasst werden muss. -->
+        <option value="jahr_minus_1"></option>
+        <option value="jahr"></option>
+        <option value="jahr_plus_1"></option>
         <option value="jahresbeginn" selected>Seit Jahresbeginn</option>
-        <option value="letztes_jahr">Letztes Jahr</option>
         <option value="3m">Letzte 3 Monate</option>
         <option value="custom">Benutzerdefiniert...</option>
       </select>
@@ -39,12 +45,20 @@
         <option value="Alle" selected>Alle</option>
       </select>
     </div>
+    <div class="po-fg-divider"></div>
+    <div class="po-fg">
+      <label>Kennzahl</label>
+      <div class="po-metric-toggle" id="po-kennzahl-toggle">
+        <button data-kennzahl="Auftragswert">Auftragswert</button>
+        <button data-kennzahl="Fakturiert" class="active">Fakturiert</button>
+      </div>
+    </div>
     <button class="btn btn-sm btn-primary po-apply-btn">Anwenden</button>
   </div>
 
   <div class="po-hero">
     <div>
-      <div class="po-hero-label">Gesamtumsatz im Zeitraum</div>
+      <div class="po-hero-label" id="po-hero-label">Fakturierter Umsatz im Zeitraum</div>
       <div class="po-hero-value" id="po-hero-total">–</div>
     </div>
     <div class="po-hero-meta" id="po-hero-meta"></div>
