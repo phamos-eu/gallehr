@@ -7,10 +7,21 @@ frappe.pages['projekt-uebersicht'].on_page_load = function (wrapper) {
 
 	$(frappe.render_template('projekt_uebersicht', {})).appendTo(page.body);
 
+	setYearOptionLabels();
 	bindEvents();
 	loadCompanies();
 	loadReport();
 };
+
+// Setzt die echten Jahreszahlen als Optionstext (z.B. "2025"/"2026"/"2027"
+// statt "Letztes/Dieses/Naechstes Jahr") -- so muss die Seite nicht jedes
+// Jahr manuell angepasst werden, siehe Rueckmeldung vom 07.09.2026.
+function setYearOptionLabels() {
+	var y = new Date().getFullYear();
+	$('#po-periode option[value="jahr_minus_1"]').text(y - 1);
+	$('#po-periode option[value="jahr"]').text(y);
+	$('#po-periode option[value="jahr_plus_1"]').text(y + 1);
+}
 
 // Nur Unternehmen, die tatsaechlich an mindestens einem Project haengen --
 // nicht jeden registrierten Company-Datensatz (es gibt lokal wie live auch
@@ -36,6 +47,10 @@ function isoDate(d) {
 	return d.toISOString().slice(0, 10);
 }
 
+// Kennzahl-Toggle-Status -- Modulscope statt DOM-Read bei jedem getFilters(),
+// weil der Toggle keine <select> ist, sondern zwei Buttons (siehe bindEvents()).
+var currentKennzahl = 'Fakturiert';
+
 // Zeitraum-Presets werden hier clientseitig in ein konkretes von/bis-Paar
 // aufgeloest -- der Report sieht immer nur ein fertiges Datumspaar, ein
 // Code-Pfad (gleiches Muster wie resolveBurnrateRange() im Finanz Dashboard).
@@ -46,9 +61,20 @@ function resolvePeriodRange() {
 	if (periode === 'custom') {
 		return { von: $('#po-von').val() || '', bis: $('#po-bis').val() || '' };
 	}
-	if (periode === 'letztes_jahr') {
-		var y = today.getFullYear() - 1;
-		return { von: y + '-01-01', bis: y + '-12-31' };
+	// jahr_minus_1/jahr/jahr_plus_1: volles Kalenderjahr (nicht nur bis heute
+	// wie "jahresbeginn") -- siehe getFilters(): diese drei Presets schalten
+	// den Report zusaetzlich auf Projektauswahl "Projekt-Laufzeit" um.
+	if (periode === 'jahr_minus_1') {
+		var y1 = today.getFullYear() - 1;
+		return { von: y1 + '-01-01', bis: y1 + '-12-31' };
+	}
+	if (periode === 'jahr') {
+		var y0 = today.getFullYear();
+		return { von: y0 + '-01-01', bis: y0 + '-12-31' };
+	}
+	if (periode === 'jahr_plus_1') {
+		var y2 = today.getFullYear() + 1;
+		return { von: y2 + '-01-01', bis: y2 + '-12-31' };
 	}
 	if (periode === '3m') {
 		var von3 = new Date(today);
@@ -70,7 +96,20 @@ function getFilters() {
 		// selbst kein echter Company-Datensatz, darf also nie als Wert
 		// rausgehen (sonst "Company Alle not found"). Leerer String statt
 		// "Alle" heisst fuer den Report "kein Filter", siehe report_script.
-		unternehmen: unternehmen === 'Alle' ? '' : unternehmen
+		unternehmen: unternehmen === 'Alle' ? '' : unternehmen,
+		// Kennzahl: Auftragswert (Sales Order) oder Fakturiert (Sales Invoice) --
+		// der aktive Button im Toggle, siehe bindEvents().
+		kennzahl: currentKennzahl,
+		// Immer "Projekt-Laufzeit": ein Projekt, dessen Start oder Ende in den
+		// gewaehlten Zeitraum faellt, soll dort mindestens auftauchen (bei 0 EUR,
+		// falls (noch) kein Beleg existiert) -- unabhaengig davon, ob der
+		// Zeitraum ueber ein Preset oder Benutzerdefiniert gewaehlt wurde, und
+		// unabhaengig von dessen Laenge/Form (siehe Rueckmeldung 07.09.2026:
+		// "wenn ein Projekt ein Jahr startet, ist das Minimum, es unter diesem
+		// Jahr zu haben"). "Beleg-Datum" bleibt im report_script als Option
+		// bestehen (z.B. fuer den direkten Report-Aufruf), wird hier aber nicht
+		// mehr verwendet.
+		projektauswahl: 'Projekt-Laufzeit'
 	};
 }
 
@@ -84,6 +123,12 @@ function bindEvents() {
 	});
 	$(document).on('keydown', '#po-von, #po-bis', function (e) {
 		if (e.key === 'Enter') { e.preventDefault(); loadReport(); }
+	});
+	$(document).on('click', '#po-kennzahl-toggle button', function () {
+		currentKennzahl = $(this).data('kennzahl');
+		$('#po-kennzahl-toggle button').removeClass('active');
+		$(this).addClass('active');
+		loadReport();
 	});
 }
 
@@ -106,7 +151,9 @@ function buildReportLink(filters) {
 	var params = [
 		'von=' + encodeURIComponent(filters.von),
 		'bis=' + encodeURIComponent(filters.bis),
-		'status=' + encodeURIComponent(filters.status)
+		'status=' + encodeURIComponent(filters.status),
+		'kennzahl=' + encodeURIComponent(filters.kennzahl),
+		'projektauswahl=' + encodeURIComponent(filters.projektauswahl)
 	];
 	if (filters.unternehmen && filters.unternehmen !== 'Alle') {
 		params.push('unternehmen=' + encodeURIComponent(filters.unternehmen));
@@ -177,6 +224,7 @@ function processReport(rows, filters) {
 
 	var reportLink = buildReportLink(filters);
 	$('#po-hero-total').text(fmt(gesamt));
+	$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert im Zeitraum' : 'Fakturierter Umsatz im Zeitraum');
 	$('#po-hero-meta').text(rows.length ? 'Zeitraum ' + filters.von + ' bis ' + filters.bis : '');
 
 	renderView('typ', byView.typ, '#BA7517', reportLink);
@@ -209,6 +257,7 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
 		var anteil = row.anteil !== undefined ? row.anteil : row[3];
 		var key = row.key !== undefined ? row.key : row[4];
+		var hinweis = row.mehrjaehrig_hinweis !== undefined ? row.mehrjaehrig_hinweis : row[5];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
 		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
@@ -222,6 +271,14 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		} else if (prefix === 'kunde' && key) {
 			nameHtml = '<a href="/app/customer/' + encodeURIComponent(key) + '">' + nameHtml + '</a>';
 		}
+		nameHtml = '<span class="po-name-text">' + nameHtml + '</span>';
+
+		// "mehrjaehrig"-Badge nur, wenn der Report einen Hinweis mitliefert
+		// (report_script setzt den nur, wenn das Projekt ueber den Zeitraum
+		// hinauslaeuft) -- siehe Mockup vom 07.09.2026.
+		if (hinweis) {
+			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
+		}
 
 		html +=
 			'<div class="po-row">' +
@@ -230,6 +287,7 @@ function renderView(prefix, rowsForView, color, reportLink) {
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
+			(hinweis ? '<span class="po-spill-note">' + frappe.utils.escape_html(hinweis) + '</span>' : '') +
 			'</div>';
 	});
 	container.html(html);
