@@ -49,7 +49,8 @@ function isoDate(d) {
 
 // Kennzahl-Toggle-Status -- Modulscope statt DOM-Read bei jedem getFilters(),
 // weil der Toggle keine <select> ist, sondern zwei Buttons (siehe bindEvents()).
-var currentKennzahl = 'Fakturiert';
+// Default Auftragswert -- Rueckmeldung 10.09.2026 (vorher Fakturiert).
+var currentKennzahl = 'Auftragswert';
 
 // Zeitraum-Presets werden hier clientseitig in ein konkretes von/bis-Paar
 // aufgeloest -- der Report sieht immer nur ein fertiges Datumspaar, ein
@@ -91,7 +92,12 @@ function getFilters() {
 	return {
 		von: range.von,
 		bis: range.bis,
-		status: $('#po-status').val() || 'Alle',
+		// Dashboard zeigt bewusst nur offene Projekte -- Rueckmeldung
+		// 10.09.2026: Alle/Abgeschlossen gehoeren nicht in die taegliche
+		// Umsatzuebersicht. Der volle Filter bleibt im Report selbst
+		// bestehen (report_script), nur die Dashboard-Seite fragt ihn nicht
+		// mehr ab.
+		status: 'Offen',
 		// unternehmen ist ein Link-Filter (Company) im Report -- "Alle" ist
 		// selbst kein echter Company-Datensatz, darf also nie als Wert
 		// rausgehen (sonst "Company Alle not found"). Leerer String statt
@@ -275,7 +281,9 @@ function renderView(prefix, rowsForView, color, reportLink) {
 
 		// "mehrjaehrig"-Badge nur, wenn der Report einen Hinweis mitliefert
 		// (report_script setzt den nur, wenn das Projekt ueber den Zeitraum
-		// hinauslaeuft) -- siehe Mockup vom 07.09.2026.
+		// hinauslaeuft) -- siehe Mockup vom 07.09.2026. Der Hinweistext selbst
+		// (Gesamtauftrag/Rest) steht nur noch im title-Tooltip, nicht mehr als
+		// eigene Zeile -- Rueckmeldung 10.09.2026: zu unruhig auf einen Blick.
 		if (hinweis) {
 			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
 		}
@@ -287,7 +295,6 @@ function renderView(prefix, rowsForView, color, reportLink) {
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
-			(hinweis ? '<span class="po-spill-note">' + frappe.utils.escape_html(hinweis) + '</span>' : '') +
 			'</div>';
 	});
 	container.html(html);
