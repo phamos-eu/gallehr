@@ -49,7 +49,8 @@ function isoDate(d) {
 
 // Kennzahl-Toggle-Status -- Modulscope statt DOM-Read bei jedem getFilters(),
 // weil der Toggle keine <select> ist, sondern zwei Buttons (siehe bindEvents()).
-var currentKennzahl = 'Fakturiert';
+// Default Auftragswert -- Rueckmeldung 10.09.2026 (vorher Fakturiert).
+var currentKennzahl = 'Auftragswert';
 
 // Zeitraum-Presets werden hier clientseitig in ein konkretes von/bis-Paar
 // aufgeloest -- der Report sieht immer nur ein fertiges Datumspaar, ein
