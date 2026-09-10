@@ -242,6 +242,20 @@
   cursor: help;
 }
 
+/* "ueberfakturiert"-Badge -- eigene Farbe (rot statt amber), damit es sich
+   klar vom mehrjaehrig-Badge unterscheidet, wenn beide nebeneinander stehen. */
+.po-over-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #C0392B;
+  background: rgba(192, 57, 43, 0.13);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  cursor: help;
+}
+
 /* Kennzahl-Toggle (Auftragswert/Fakturiert) -- zwei Buttons statt <select>,
    damit der aktive Zustand auf einen Blick sichtbar ist, gleiches Muster wie
    die Preset-Buttons im Finanz Dashboard. */
