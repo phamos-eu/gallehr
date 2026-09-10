@@ -280,7 +280,9 @@ function renderView(prefix, rowsForView, color, reportLink) {
 
 		// "mehrjaehrig"-Badge nur, wenn der Report einen Hinweis mitliefert
 		// (report_script setzt den nur, wenn das Projekt ueber den Zeitraum
-		// hinauslaeuft) -- siehe Mockup vom 07.09.2026.
+		// hinauslaeuft) -- siehe Mockup vom 07.09.2026. Der Hinweistext selbst
+		// (Gesamtauftrag/Rest) steht nur noch im title-Tooltip, nicht mehr als
+		// eigene Zeile -- Rueckmeldung 10.09.2026: zu unruhig auf einen Blick.
 		if (hinweis) {
 			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
 		}
@@ -292,7 +294,6 @@ function renderView(prefix, rowsForView, color, reportLink) {
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
-			(hinweis ? '<span class="po-spill-note">' + frappe.utils.escape_html(hinweis) + '</span>' : '') +
 			'</div>';
 	});
 	container.html(html);
