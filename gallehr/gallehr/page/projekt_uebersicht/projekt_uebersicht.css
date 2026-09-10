@@ -256,6 +256,21 @@
   cursor: help;
 }
 
+/* "ohne Auftrag"-Badge -- bewusst neutral (Schiefergrau statt rot/amber):
+   kein finanzieller Alarm, sondern ein Datenluecken-Hinweis (kein Sales
+   Order hinterlegt), andere Ursache als ueberfakturiert. */
+.po-noorder-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #5B6B7A;
+  background: rgba(91, 107, 122, 0.14);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  cursor: help;
+}
+
 /* Kennzahl-Toggle (Auftragswert/Fakturiert) -- zwei Buttons statt <select>,
    damit der aktive Zustand auf einen Blick sichtbar ist, gleiches Muster wie
    die Preset-Buttons im Finanz Dashboard. */

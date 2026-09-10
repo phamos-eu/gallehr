@@ -265,6 +265,7 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var key = row.key !== undefined ? row.key : row[4];
 		var hinweis = row.mehrjaehrig_hinweis !== undefined ? row.mehrjaehrig_hinweis : row[5];
 		var ueberHinweis = row.ueberfakturiert_hinweis !== undefined ? row.ueberfakturiert_hinweis : row[6];
+		var ohneAuftragHinweis = row.ohne_auftrag_hinweis !== undefined ? row.ohne_auftrag_hinweis : row[7];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
 		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
@@ -294,6 +295,14 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		// 10.09.2026: siehe Mockup mockup_ueberfakturiert.html.
 		if (ueberHinweis) {
 			nameHtml += '<span class="po-over-badge" title="' + frappe.utils.escape_html(ueberHinweis) + '">überfakturiert</span>';
+		}
+		// "ohne Auftrag"-Badge -- eigener Fall, kein Ueberfakturiert: Live-
+		// Stichprobe 10.09.2026 zeigte, fast die Haelfte der Ueberfakturiert-
+		// Treffer hatten in Wahrheit gar keinen Sales Order (Auftragswert 0),
+		// nicht "mehr abgerechnet als beauftragt". Eigenes, neutrales Badge
+		// statt irrefuehrendem "X über 0 EUR hinaus".
+		if (ohneAuftragHinweis) {
+			nameHtml += '<span class="po-noorder-badge" title="' + frappe.utils.escape_html(ohneAuftragHinweis) + '">ohne Auftrag</span>';
 		}
 
 		html +=
