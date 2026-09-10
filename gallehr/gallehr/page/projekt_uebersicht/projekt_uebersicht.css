@@ -165,7 +165,7 @@
 .po-row {
   display: grid;
   grid-template-columns: 18px 1fr auto 44px;
-  grid-template-rows: auto auto 3px;
+  grid-template-rows: auto 3px;
   align-items: center;
   row-gap: 2px;
   column-gap: 8px;
@@ -242,13 +242,33 @@
   cursor: help;
 }
 
-.po-row .po-spill-note {
-  grid-column: 2 / 4;
-  font-size: 10px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* "ueberfakturiert"-Badge -- eigene Farbe (rot statt amber), damit es sich
+   klar vom mehrjaehrig-Badge unterscheidet, wenn beide nebeneinander stehen. */
+.po-over-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #C0392B;
+  background: rgba(192, 57, 43, 0.13);
+  border-radius: 4px;
+  padding: 1px 5px;
   white-space: nowrap;
+  cursor: help;
+}
+
+/* "ohne Auftrag"-Badge -- bewusst neutral (Schiefergrau statt rot/amber):
+   kein finanzieller Alarm, sondern ein Datenluecken-Hinweis (kein Sales
+   Order hinterlegt), andere Ursache als ueberfakturiert. */
+.po-noorder-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 600;
+  color: #5B6B7A;
+  background: rgba(91, 107, 122, 0.14);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  cursor: help;
 }
 
 /* Kennzahl-Toggle (Auftragswert/Fakturiert) -- zwei Buttons statt <select>,

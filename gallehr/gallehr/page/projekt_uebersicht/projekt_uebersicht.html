@@ -32,14 +32,6 @@
     </div>
     <div class="po-fg-divider"></div>
     <div class="po-fg">
-      <label>Status</label>
-      <select id="po-status" class="form-control form-control-sm">
-        <option value="Alle" selected>Alle</option>
-        <option value="Offen">Offen</option>
-        <option value="Abgeschlossen">Abgeschlossen</option>
-      </select>
-    </div>
-    <div class="po-fg">
       <label>Unternehmen</label>
       <select id="po-unternehmen" class="form-control form-control-sm">
         <option value="Alle" selected>Alle</option>
@@ -49,8 +41,8 @@
     <div class="po-fg">
       <label>Kennzahl</label>
       <div class="po-metric-toggle" id="po-kennzahl-toggle">
-        <button data-kennzahl="Auftragswert">Auftragswert</button>
-        <button data-kennzahl="Fakturiert" class="active">Fakturiert</button>
+        <button data-kennzahl="Auftragswert" class="active">Auftragswert</button>
+        <button data-kennzahl="Fakturiert">Fakturiert</button>
       </div>
     </div>
     <button class="btn btn-sm btn-primary po-apply-btn">Anwenden</button>
@@ -58,7 +50,7 @@
 
   <div class="po-hero">
     <div>
-      <div class="po-hero-label" id="po-hero-label">Fakturierter Umsatz im Zeitraum</div>
+      <div class="po-hero-label" id="po-hero-label">Auftragswert im Zeitraum</div>
       <div class="po-hero-value" id="po-hero-total">–</div>
     </div>
     <div class="po-hero-meta" id="po-hero-meta"></div>

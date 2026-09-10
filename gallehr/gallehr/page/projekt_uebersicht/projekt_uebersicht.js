@@ -49,7 +49,8 @@ function isoDate(d) {
 
 // Kennzahl-Toggle-Status -- Modulscope statt DOM-Read bei jedem getFilters(),
 // weil der Toggle keine <select> ist, sondern zwei Buttons (siehe bindEvents()).
-var currentKennzahl = 'Fakturiert';
+// Default Auftragswert -- Rueckmeldung 10.09.2026 (vorher Fakturiert).
+var currentKennzahl = 'Auftragswert';
 
 // Zeitraum-Presets werden hier clientseitig in ein konkretes von/bis-Paar
 // aufgeloest -- der Report sieht immer nur ein fertiges Datumspaar, ein
@@ -91,7 +92,12 @@ function getFilters() {
 	return {
 		von: range.von,
 		bis: range.bis,
-		status: $('#po-status').val() || 'Alle',
+		// Dashboard zeigt bewusst nur offene Projekte -- Rueckmeldung
+		// 10.09.2026: Alle/Abgeschlossen gehoeren nicht in die taegliche
+		// Umsatzuebersicht. Der volle Filter bleibt im Report selbst
+		// bestehen (report_script), nur die Dashboard-Seite fragt ihn nicht
+		// mehr ab.
+		status: 'Offen',
 		// unternehmen ist ein Link-Filter (Company) im Report -- "Alle" ist
 		// selbst kein echter Company-Datensatz, darf also nie als Wert
 		// rausgehen (sonst "Company Alle not found"). Leerer String statt
@@ -258,6 +264,8 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var anteil = row.anteil !== undefined ? row.anteil : row[3];
 		var key = row.key !== undefined ? row.key : row[4];
 		var hinweis = row.mehrjaehrig_hinweis !== undefined ? row.mehrjaehrig_hinweis : row[5];
+		var ueberHinweis = row.ueberfakturiert_hinweis !== undefined ? row.ueberfakturiert_hinweis : row[6];
+		var ohneAuftragHinweis = row.ohne_auftrag_hinweis !== undefined ? row.ohne_auftrag_hinweis : row[7];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
 		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
@@ -275,9 +283,26 @@ function renderView(prefix, rowsForView, color, reportLink) {
 
 		// "mehrjaehrig"-Badge nur, wenn der Report einen Hinweis mitliefert
 		// (report_script setzt den nur, wenn das Projekt ueber den Zeitraum
-		// hinauslaeuft) -- siehe Mockup vom 07.09.2026.
+		// hinauslaeuft) -- siehe Mockup vom 07.09.2026. Der Hinweistext selbst
+		// (Gesamtauftrag/Rest) steht nur noch im title-Tooltip, nicht mehr als
+		// eigene Zeile -- Rueckmeldung 10.09.2026: zu unruhig auf einen Blick.
 		if (hinweis) {
 			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
+		}
+		// "ueberfakturiert"-Badge -- unabhaengig vom mehrjaehrig-Badge, beide
+		// koennen gleichzeitig erscheinen (report_script prueft das getrennt).
+		// Ausgeloest durch Shell-Deutschland-K068 (PROJ-0498), Rueckmeldung
+		// 10.09.2026: siehe Mockup mockup_ueberfakturiert.html.
+		if (ueberHinweis) {
+			nameHtml += '<span class="po-over-badge" title="' + frappe.utils.escape_html(ueberHinweis) + '">überfakturiert</span>';
+		}
+		// "ohne Auftrag"-Badge -- eigener Fall, kein Ueberfakturiert: Live-
+		// Stichprobe 10.09.2026 zeigte, fast die Haelfte der Ueberfakturiert-
+		// Treffer hatten in Wahrheit gar keinen Sales Order (Auftragswert 0),
+		// nicht "mehr abgerechnet als beauftragt". Eigenes, neutrales Badge
+		// statt irrefuehrendem "X über 0 EUR hinaus".
+		if (ohneAuftragHinweis) {
+			nameHtml += '<span class="po-noorder-badge" title="' + frappe.utils.escape_html(ohneAuftragHinweis) + '">ohne Auftrag</span>';
 		}
 
 		html +=
@@ -287,7 +312,6 @@ function renderView(prefix, rowsForView, color, reportLink) {
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
-			(hinweis ? '<span class="po-spill-note">' + frappe.utils.escape_html(hinweis) + '</span>' : '') +
 			'</div>';
 	});
 	container.html(html);
