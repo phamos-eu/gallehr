@@ -91,7 +91,12 @@ function getFilters() {
 	return {
 		von: range.von,
 		bis: range.bis,
-		status: $('#po-status').val() || 'Alle',
+		// Dashboard zeigt bewusst nur offene Projekte -- Rueckmeldung
+		// 10.09.2026: Alle/Abgeschlossen gehoeren nicht in die taegliche
+		// Umsatzuebersicht. Der volle Filter bleibt im Report selbst
+		// bestehen (report_script), nur die Dashboard-Seite fragt ihn nicht
+		// mehr ab.
+		status: 'Offen',
 		// unternehmen ist ein Link-Filter (Company) im Report -- "Alle" ist
 		// selbst kein echter Company-Datensatz, darf also nie als Wert
 		// rausgehen (sonst "Company Alle not found"). Leerer String statt
