@@ -243,7 +243,7 @@
 }
 
 /* "ueberfakturiert"-Badge -- eigene Farbe (rot statt amber), damit es sich
-   klar vom mehrjaehrig-Badge unterscheidet, wenn beide nebeneinander stehen. */
+   klar vom kontinuierlich-Badge unterscheidet, wenn beide nebeneinander stehen. */
 .po-over-badge {
   flex-shrink: 0;
   font-size: 9px;
