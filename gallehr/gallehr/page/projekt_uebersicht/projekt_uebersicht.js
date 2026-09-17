@@ -263,7 +263,9 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
 		var anteil = row.anteil !== undefined ? row.anteil : row[3];
 		var key = row.key !== undefined ? row.key : row[4];
-		var hinweis = row.mehrjaehrig_hinweis !== undefined ? row.mehrjaehrig_hinweis : row[5];
+		var hinweis = row.kontinuierlich_hinweis !== undefined ? row.kontinuierlich_hinweis : row[5];
+		var ueberHinweis = row.ueberfakturiert_hinweis !== undefined ? row.ueberfakturiert_hinweis : row[6];
+		var ohneAuftragHinweis = row.ohne_auftrag_hinweis !== undefined ? row.ohne_auftrag_hinweis : row[7];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
 		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
@@ -279,13 +281,31 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		}
 		nameHtml = '<span class="po-name-text">' + nameHtml + '</span>';
 
-		// "mehrjaehrig"-Badge nur, wenn der Report einen Hinweis mitliefert
-		// (report_script setzt den nur, wenn das Projekt ueber den Zeitraum
-		// hinauslaeuft) -- siehe Mockup vom 07.09.2026. Der Hinweistext selbst
-		// (Gesamtauftrag/Rest) steht nur noch im title-Tooltip, nicht mehr als
-		// eigene Zeile -- Rueckmeldung 10.09.2026: zu unruhig auf einen Blick.
+		// "kontinuierlich"-Badge nur, wenn der Report einen Hinweis mitliefert
+		// (report_script setzt kontinuierlich_hinweis nur fuer Projekte mit dem
+		// Tag "Kontinuierlich") -- siehe Mockup vom 07.09.2026. Das fruehere
+		// "mehrjaehrig"-Konzept (mit eigenem Label-Feld/row[8]) entfaellt seit
+		// der Umstellung von Auftragswert auf Item-Ebene komplett, siehe
+		// report_script. Der Hinweistext selbst steht nur noch im
+		// title-Tooltip, nicht mehr als eigene Zeile -- Rueckmeldung
+		// 10.09.2026: zu unruhig auf einen Blick.
 		if (hinweis) {
-			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
+			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">kontinuierlich</span>';
+		}
+		// "ueberfakturiert"-Badge -- unabhaengig vom kontinuierlich-Badge, beide
+		// koennen gleichzeitig erscheinen (report_script prueft das getrennt).
+		// Ausgeloest durch Shell-Deutschland-K068 (PROJ-0498), Rueckmeldung
+		// 10.09.2026: siehe Mockup mockup_ueberfakturiert.html.
+		if (ueberHinweis) {
+			nameHtml += '<span class="po-over-badge" title="' + frappe.utils.escape_html(ueberHinweis) + '">überfakturiert</span>';
+		}
+		// "ohne Auftrag"-Badge -- eigener Fall, kein Ueberfakturiert: Live-
+		// Stichprobe 10.09.2026 zeigte, fast die Haelfte der Ueberfakturiert-
+		// Treffer hatten in Wahrheit gar keinen Sales Order (Auftragswert 0),
+		// nicht "mehr abgerechnet als beauftragt". Eigenes, neutrales Badge
+		// statt irrefuehrendem "X über 0 EUR hinaus".
+		if (ohneAuftragHinweis) {
+			nameHtml += '<span class="po-noorder-badge" title="' + frappe.utils.escape_html(ohneAuftragHinweis) + '">ohne Auftrag</span>';
 		}
 
 		html +=
