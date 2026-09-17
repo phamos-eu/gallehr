@@ -266,6 +266,12 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var hinweis = row.mehrjaehrig_hinweis !== undefined ? row.mehrjaehrig_hinweis : row[5];
 		var ueberHinweis = row.ueberfakturiert_hinweis !== undefined ? row.ueberfakturiert_hinweis : row[6];
 		var ohneAuftragHinweis = row.ohne_auftrag_hinweis !== undefined ? row.ohne_auftrag_hinweis : row[7];
+		// "kontinuierlich" statt "mehrjaehrig" fuer Projekte mit dem Tag
+		// "Kontinuierlich" (Dauerbetreuung) -- gleicher Ausloeser (spillt_ueber),
+		// nur andere Beschriftung. Neue Spalte ans Ende angehaengt (Index 8),
+		// damit row[5]/row[6]/row[7] oben unveraendert bleiben. Rueckmeldung
+		// 17.09.2026.
+		var spillLabel = row.mehrjaehrig_label !== undefined ? row.mehrjaehrig_label : row[8];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
 		// Projekt- und Kunde-View verlinken direkt auf den zugrundeliegenden
@@ -287,7 +293,8 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		// (Gesamtauftrag/Rest) steht nur noch im title-Tooltip, nicht mehr als
 		// eigene Zeile -- Rueckmeldung 10.09.2026: zu unruhig auf einen Blick.
 		if (hinweis) {
-			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">mehrjährig</span>';
+			var spillText = spillLabel === 'kontinuierlich' ? 'kontinuierlich' : 'mehrjährig';
+			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">' + spillText + '</span>';
 		}
 		// "ueberfakturiert"-Badge -- unabhaengig vom mehrjaehrig-Badge, beide
 		// koennen gleichzeitig erscheinen (report_script prueft das getrennt).
