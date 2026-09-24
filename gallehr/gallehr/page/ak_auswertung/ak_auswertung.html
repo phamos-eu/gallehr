@@ -1,61 +1,58 @@
 <div class="ak-auswertung">
   <div class="ak-header">
-    <h4 class="ak-title">AK Auswertung</h4>
-    <div class="ak-header-actions">
-      <button class="btn btn-sm btn-default ak-export-btn"><i class="ti ti-download"></i> Excel-Export</button>
-      <button class="btn btn-sm btn-default ak-refresh-btn"><i class="ti ti-refresh"></i> Aktualisieren</button>
+    <h4 class="ak-title">AK Auswertung – Eingangsrechnungen</h4>
+    <div class="ak-actions">
+      <button class="btn btn-sm btn-default" id="ak-btn-reset">Filter zurücksetzen</button>
+      <button class="btn btn-sm btn-default" id="ak-btn-export"><i class="ti ti-download"></i> Excel-Export</button>
+      <button class="btn btn-sm btn-default" id="ak-btn-refresh"><i class="ti ti-refresh"></i> Aktualisieren</button>
     </div>
   </div>
 
   <div class="ak-filters">
-    <div class="ak-fg">
-      <label>Von</label>
-      <input type="date" id="ak-von" class="form-control form-control-sm">
-    </div>
-    <div class="ak-fg">
-      <label>Bis</label>
-      <input type="date" id="ak-bis" class="form-control form-control-sm">
-    </div>
-    <div class="ak-fg-note">
-      Kostenstelle: <strong>Haupt - G</strong>
-      <span class="text-muted">(v1 — weitere Kostenstellen folgen in v2)</span>
-    </div>
+    <div class="ak-fg"><label>Zeitraum <span class="ak-info" tabindex="0" data-tip="Gezählt wird nach Rechnungsdatum (Posting Date), nicht nach Zahlungsdatum. „Ab 2025“: seitdem ist jede bezahlte Rechnung mit der Bank verknüpft.">i</span></label>
+      <select id="ak-f-zeit" class="form-control form-control-sm">
+        <option value="jahr" selected>Seit Jahresbeginn</option><option value="3m">Letzte 3 Monate</option><option value="12m">Letzte 12 Monate</option>
+        <option value="vorjahr" id="ak-opt-vorjahr">Vorjahr</option><option value="ab2025">Ab 2025 (Bank-Abgleich vollständig)</option>
+        <option value="alle">Alle Jahre</option><option value="custom">Benutzerdefiniert…</option>
+      </select></div>
+    <div class="ak-fg" id="ak-g-von" style="display:none"><label>Von</label><input type="date" id="ak-f-von" class="form-control form-control-sm"></div>
+    <div class="ak-fg" id="ak-g-bis" style="display:none"><label>Bis</label><input type="date" id="ak-f-bis" class="form-control form-control-sm"></div>
+    <div class="ak-fg-div"></div>
+    <div class="ak-fg"><label>Unternehmen</label><select id="ak-f-firma" class="form-control form-control-sm"><option value="">Alle</option></select></div>
+    <div class="ak-fg"><label>Kostenstelle <span class="ak-info" tabindex="0" data-tip="Kostenstelle aus dem Kopf der Rechnung. Ist sie leer, ordnet ein Standort-Tag zu (z. B. „Büro Wiesbaden“), sonst steht dort „nicht zugeordnet“.">i</span></label><select id="ak-f-kst" class="form-control form-control-sm"><option value="">Alle</option></select></div>
+    <div class="ak-fg"><label>Bank-Status <span class="ak-info r" tabindex="0" data-tip="Bank bestätigt: die Zahlung der Rechnung ist mit einer Bank Transaction verknüpft. Ohne Bank-Bestätigung: noch offen oder (ältere Rechnungen) ohne Verknüpfung.">i</span></label>
+      <select id="ak-f-bank" class="form-control form-control-sm"><option value="">Alle</option><option value="bank">Bank bestätigt</option><option value="ohne">Ohne Bank-Bestätigung</option></select></div>
+    <div class="ak-fg-div"></div>
+    <div class="ak-fg"><label>Kostenart <span class="ak-info r" tabindex="0" data-tip="Die Seite zeigt nur Aufwand, also Konten der Kontenart Aufwand. Anlagevermögen, Durchlaufposten und Erträge sind nicht enthalten.">i</span></label><div class="ak-seg"><button class="on" type="button" disabled>Aufwand</button></div></div>
+    <div class="ak-fg"><label>Kennzahl <span class="ak-info" tabindex="0" data-tip="Netto: Kosten ohne Umsatzsteuer, so werden Kosten gezählt. Brutto (Bank): Betrag inklusive Steuer, so wie er vom Bankkonto abgeht.">i</span></label><div class="ak-seg" id="ak-f-kz"><button data-k="netto" class="on">Netto</button><button data-k="brutto">Brutto (Bank)</button></div></div>
+    <label class="ak-chk"><input type="checkbox" id="ak-f-konzern" checked> Konzernrechnungen ausblenden <span class="ak-info" tabindex="0" data-tip="Rechnungen zwischen euren eigenen Firmen (Lieferant ist eine Gesellschaft der Gruppe oder Tag „Umbuchung“). Bei „Alle Unternehmen“ würden sie doppelt zählen. Schaust du nur auf eine Firma, Haken entfernen.">i</span></label>
   </div>
 
-  <div class="ak-summary">
-    <div class="ak-summary-card">
-      <div class="ak-summary-label">Gesamt-Aufwand im Zeitraum</div>
-      <div class="ak-summary-value" id="ak-summe-gesamt">–</div>
-    </div>
-    <div class="ak-summary-card">
-      <div class="ak-summary-label">Davon bankabgeglichen</div>
-      <div class="ak-summary-value" id="ak-summe-abgeglichen">–</div>
-    </div>
-    <div class="ak-summary-card">
-      <div class="ak-summary-label">Aufwandskonten im Zeitraum</div>
-      <div class="ak-summary-value" id="ak-anzahl-konten">–</div>
-    </div>
+  <div class="ak-tagrow" id="ak-tagrow"></div>
+  <div class="ak-active" id="ak-active"></div>
+
+  <div class="ak-hero">
+    <div><div class="ak-lbl"><span id="ak-h-lbl">Netto-Kosten im Zeitraum</span><span class="ak-info" tabindex="0" data-tip="Summe der Rechnungspositionen im gewählten Ausschnitt. Dieselbe Summe steht in Karten, Tabelle und Excel-Export.">i</span></div><div class="ak-hero-val" id="ak-h-val">–</div><div class="ak-hero-meta" id="ak-h-meta"></div></div>
+    <div class="ak-bank"><div class="ak-lbl">Bank-Bestätigung (Anteil am Betrag) <span class="ak-info" tabindex="0" data-tip="Anteil der Summe, dessen Zahlung mit einer Bank Transaction verknüpft ist.">i</span></div><div class="ak-stack" id="ak-h-stack"></div><div class="ak-legend" id="ak-h-legend"></div></div>
   </div>
 
-  <table class="table table-sm ak-table">
-    <thead>
-      <tr>
-        <th>Aufwandskonto</th>
-        <th class="ak-num">Buchungen</th>
-        <th class="ak-num">Netto EUR</th>
-        <th class="ak-num">Anteil</th>
-        <th>Bankabgleich</th>
-      </tr>
-    </thead>
-    <tbody id="ak-tbody">
-      <tr><td colspan="5" class="text-muted">Lade...</td></tr>
-    </tbody>
-  </table>
+  <div class="ak-grid">
+    <div class="ak-card"><h2>Kostenstelle <span class="ak-sub" id="ak-c-kst-n"></span></h2><div class="ak-sub">Kopf der Rechnung; leer = „nicht zugeordnet“ (Tag „Büro Wiesbaden“ ordnet ab)</div><div id="ak-c-kst"></div></div>
+    <div class="ak-card"><h2>Aufwandskonto (Kategorie) <span class="ak-sub" id="ak-c-konto-n"></span></h2><div class="ak-sub">Klick öffnet die Items des Kontos, zweiter Klick filtert</div><div id="ak-c-konto"></div></div>
+    <div class="ak-card"><h2>Tags als Kontext <span class="ak-sub">Zahl rechts = Zeilen</span></h2><div class="ak-sub">Tags erklären, wofür / wie bezahlt wurde – sie ändern nie die Summe</div><div id="ak-c-tag"></div></div>
+  </div>
 
-  <div class="ak-footnote">
-    Bankabgleich = Anteil der Buchungen dieses Kontos, die nachweislich ueber eine echte
-    Bank Transaction bezahlt wurden. Rot markierte Zeilen (unter 20%) sind Konten, bei denen
-    das meiste noch nicht nachvollziehbar ist — nicht zwingend ein Fehler (z.B. offene
-    Rechnungen), aber ein guter erster Blick.
+  <div class="ak-card ak-block">
+    <h2>Verlauf je Monat <span class="ak-sub" id="ak-c-mon-sub"></span></h2>
+    <div class="ak-sub">Summe der gewählten Kennzahl je Buchungsmonat im aktuellen Ausschnitt</div>
+    <div class="ak-months" id="ak-c-mon"></div>
+    <div class="ak-mlab" id="ak-c-mon-lab"></div>
+  </div>
+
+  <div class="ak-card">
+    <h2>Kostenzeilen <span class="ak-sub" id="ak-t-n"></span></h2>
+    <div class="ak-sub">Jede Zeile = eine Rechnungsposition; Summe der Tabelle = Karten = Excel-Export</div>
+    <div class="ak-tabwrap"><table class="ak-table"><thead id="ak-t-head"></thead><tbody id="ak-t-body"></tbody></table></div>
+    <div class="ak-more" id="ak-t-more"></div>
   </div>
 </div>
