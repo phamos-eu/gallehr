@@ -85,18 +85,35 @@ def _datum_passt(q, datum):
 	return q.lower() in datum
 
 
-def _spalten_text(z, spalte):
+def _spalten_werte(z, spalte):
+	"""Die einzelnen Werte einer Spalte -- fuer die genaue Suche (Anfuehrungszeichen) muss JEDER Wert fuer sich
+	verglichen werden, nicht ein zusammengeklebter Text (sonst wuerde "Mastercard" per Wort-Split aus
+	"Mastercard Sven Worm" faelschlich als Treffer zaehlen)."""
 	if spalte == "beleg":
-		return z["beleg"]
+		return [z["beleg"]]
 	if spalte == "lieferant":
-		return z["lieferant"]
+		# Name UND Lieferantennummer durchsuchbar, weil manche Nutzer den Namen kennen, andere nur die Nummer.
+		return [z["lieferant"], z["lieferant_id"]]
 	if spalte == "konto":
-		return "%s %s" % (z["konto_nr"], z["konto_name"])
+		return [z["konto_nr"], z["konto_name"]]
 	if spalte == "item":
-		return z["item"]
+		return [z["item"]]
 	if spalte == "tags":
-		return " ".join(z["tags"])
-	return ""
+		return list(z["tags"])
+	return []
+
+
+def _spalten_text(z, spalte):
+	return " ".join(_spalten_werte(z, spalte))
+
+
+def _text_passt(q, z, spalte):
+	"""In Anfuehrungszeichen = genaue Uebereinstimmung (von der Vorschlagsliste im Frontend gesetzt, damit z.B.
+	"Mastercard" nicht auch "Mastercard Sven Worm" trifft); sonst wie bisher "enthaelt"."""
+	if len(q) >= 2 and q[0] == q[-1] == '"':
+		ziel = q[1:-1].strip().lower()
+		return any(w.strip().lower() == ziel for w in _spalten_werte(z, spalte) if w)
+	return q.lower() in _spalten_text(z, spalte).lower()
 
 
 def anwenden(zeilen, f, ohne=()):
@@ -135,7 +152,7 @@ def _spalten_passen(z, f):
 		elif spalte == "betrag":
 			if not _betrag_passt(q, betrag(z, f)):
 				return False
-		elif q.lower() not in _spalten_text(z, spalte).lower():
+		elif not _text_passt(q, z, spalte):
 			return False
 	return True
 

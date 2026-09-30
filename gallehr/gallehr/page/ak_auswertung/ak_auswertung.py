@@ -27,7 +27,17 @@ def get_optionen():
 	_check_permission()
 	unternehmen = frappe.db.sql_list("SELECT DISTINCT company FROM `tabPurchase Invoice` WHERE docstatus = 1 ORDER BY company")
 	kostenstellen = frappe.get_all("Cost Center", filters={"is_group": 0, "disabled": 0}, pluck="name", order_by="name")
-	return {"unternehmen": unternehmen, "kostenstellen": kostenstellen + [NICHT_ZUGEORDNET], "gruppen": auswertung.FAMILIEN_REIHE}
+	# Fuer die Vorschlagsliste im Lieferanten-Filter: Name UND Lieferantennummer (die Frappe-Beleg-ID des Lieferanten) --
+	# manche Nutzer kennen nur den Namen, andere nur die Nummer auswendig (Rueckmeldung 2026-09-30).
+	lieferanten = frappe.db.sql(
+		"SELECT DISTINCT pi.supplier AS id, pi.supplier_name AS name FROM `tabPurchase Invoice` pi "
+		"WHERE pi.docstatus = 1 AND pi.supplier_name IS NOT NULL AND pi.supplier_name != '' ORDER BY pi.supplier_name",
+		as_dict=True)
+	items = frappe.db.sql_list(
+		"SELECT DISTINCT pii.item_code FROM `tabPurchase Invoice Item` pii JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent "
+		"WHERE pi.docstatus = 1 AND pii.item_code IS NOT NULL AND pii.item_code != '' ORDER BY pii.item_code")
+	return {"unternehmen": unternehmen, "kostenstellen": kostenstellen + [NICHT_ZUGEORDNET], "gruppen": auswertung.FAMILIEN_REIHE,
+		"lieferanten": lieferanten, "items": items}
 
 
 @frappe.whitelist()
