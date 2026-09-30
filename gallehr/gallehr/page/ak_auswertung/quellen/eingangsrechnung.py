@@ -2,7 +2,7 @@
 
 Kostenzeile (Schluessel):
   quelle, beleg_typ, beleg, zeile, datum (ISO), unternehmen, kostenstelle, kostenstelle_quelle (Kopf | Tag | -),
-  konto_nr, konto_name, item, item_group, lieferant, netto, brutto, bank_status (bank | ohne), bt, tags, konzern, rueckgabe
+  konto_nr, konto_name, item, item_group, lieferant, lieferant_id, netto, brutto, bank_status (bank | ohne), bt, tags, konzern, rueckgabe
 
 Entscheidungen (Mockup-Abnahme 2026-09-24):
 - nur Konten der Kontenart Aufwand (Account.root_type = 'Expense'); Anlagevermoegen/Durchlauf/Ertrag gehoeren nicht dazu
@@ -58,7 +58,7 @@ def zeilen(von, bis, unternehmen=None):
 			"quelle": "Eingangsrechnung", "beleg_typ": "Purchase Invoice", "beleg": r.beleg, "zeile": r.zeile,
 			"datum": str(r.datum), "unternehmen": r.unternehmen, "kostenstelle": kst, "kostenstelle_quelle": quelle,
 			"konto_nr": r.konto_nr or "", "konto_name": r.konto_name or "", "item": r.item or "", "item_group": r.item_group or "",
-			"lieferant": r.lieferant or "", "netto": flt(r.netto, 2), "brutto": flt(flt(r.netto) * faktor, 2),
+			"lieferant": r.lieferant or "", "lieferant_id": r.lieferant_id or "", "netto": flt(r.netto, 2), "brutto": flt(flt(r.netto) * faktor, 2),
 			"bank_status": "bank" if bt else "ohne", "bt": bt, "tags": t,
 			"konzern": bool(r.lieferant in eigene or r.lieferant_id in eigene or any(x in KONZERN_TAGS for x in t)),
 			"rueckgabe": bool(r.is_return),

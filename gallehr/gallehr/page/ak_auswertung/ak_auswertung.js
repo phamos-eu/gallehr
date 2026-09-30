@@ -20,9 +20,11 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 	var COLS = [
 		{k: 'datum', label: 'Datum', ph: '2026-03 / >2026-05', tip: 'Teil des Datums (2026-03) oder Vergleich: >2026-05-01, <=2026-06.'},
 		{k: 'beleg', label: 'Beleg', ph: 'Beleg'},
-		{k: 'lieferant', label: 'Lieferant', ph: 'Lieferant'},
+		{k: 'lieferant', label: 'Lieferant', ph: 'Name oder Nummer', liste: 'ak-liste-lieferant',
+			tip: 'Name oder Lieferantennummer, auch teilweise. Vorschlagsliste beim Tippen anklickbar -- ein Vorschlag grenzt genau auf diesen einen Lieferanten ein (sonst würde z. B. "Mastercard" auch "Mastercard Sven Worm" mittreffen).'},
 		{k: 'konto', label: 'Konto', ph: 'Nr. oder Name'},
-		{k: 'item', label: 'Item', ph: 'Item'},
+		{k: 'item', label: 'Item', ph: 'Item', liste: 'ak-liste-item',
+			tip: 'Item-Code, auch teilweise. Vorschlagsliste beim Tippen anklickbar -- ein Vorschlag grenzt genau auf dieses eine Item ein.'},
 		{k: 'kostenstelle', label: 'Kostenstelle', type: 'kst'},
 		{k: 'betrag', label: 'Betrag', num: true, ph: '200 / >1000',
 			tip: 'Zahl = enthält die Ziffern (200 findet 200, 1.200, 2.005). Mit Vergleich: >1000, <=500, =200. Bereich: 100-500.'},
@@ -62,6 +64,14 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 			gruppen: Object.keys(S.gruppen).filter(function (k) { return S.gruppen[k]; }),
 			tag: S.tag, konto: S.konto, spalten: S.spalten, sortierung: S.sort
 		};
+	}
+
+	// Aufgeklappte Konten (S.open) sind nur im GERADE angezeigten Ausschnitt sinnvoll -- bei jedem Filterwechsel
+	// ausser dem Konto-Klick selbst wieder zuklappen, sonst sammeln sich Item-Listen aus laengst verlassenen
+	// Ansichten (anderer Zeitraum/Kostenstelle/...) unten an und sind nicht mehr nachvollziehbar.
+	function schliesseKonten() {
+		S.open = {};
+		S.kontoMax = 12;
 	}
 
 	function load() {
@@ -192,7 +202,11 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		if (S.tag) act.push(['tag', 'Tag: ' + S.tag]);
 		Object.keys(S.gruppen).filter(function (g) { return S.gruppen[g]; }).forEach(function (g) { act.push(['gruppe:' + g, 'Tag-Gruppe: ' + g]); });
 		if (S.bank) act.push(['bank', 'Bank-Status: ' + (S.bank === 'bank' ? 'bestätigt' : 'ohne')]);
-		COLS.forEach(function (c) { if (S.spalten[c.k]) act.push(['spalte:' + c.k, c.label + ': ' + S.spalten[c.k]]); });
+		COLS.forEach(function (c) {
+			if (!S.spalten[c.k]) return;
+			var wert = S.spalten[c.k], genau = wert.length >= 2 && wert[0] === '"' && wert[wert.length - 1] === '"';
+			act.push(['spalte:' + c.k, c.label + ': ' + (genau ? wert.slice(1, -1) + ' (genau)' : wert)]);
+		});
 		el('active').innerHTML = act.map(function (a) { return '<span class="ak-chip" data-x="' + esc(a[0]) + '">' + esc(a[1]) + ' ✕</span>'; }).join('');
 		el('tagrow').innerHTML = '<span class="ak-lbl">Tag-Gruppe (Kontext): <span class="ak-info" tabindex="0" data-tip="' + esc(TIP_TAG) + '">i</span></span>' +
 			opt.gruppen.map(function (g) { return '<span class="ak-chip ' + (S.gruppen[g] ? 'on' : '') + '" data-gruppe="' + esc(g) + '">' + esc(g) + '</span>'; }).join('');
@@ -207,10 +221,38 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 			var inp;
 			if (c.type === 'kst') inp = '<select id="ak-col-kostenstelle"><option value="">Alle</option></select>';
 			else if (c.type === 'bank') inp = '<select id="ak-col-bank"><option value="">Alle</option><option value="bank">Bank bestätigt</option><option value="ohne">Ohne Bank</option></select>';
-			else inp = '<input type="text" data-col="' + c.k + '" placeholder="' + esc(c.ph || 'Filter') + '" title="' + esc(c.tip || 'enthält (Groß-/Kleinschreibung egal)') + '">';
+			else inp = '<input type="text" data-col="' + c.k + '"' + (c.liste ? ' list="' + c.liste + '"' : '') +
+				' placeholder="' + esc(c.ph || 'Filter') + '" title="' + esc(c.tip || 'enthält (Groß-/Kleinschreibung egal)') + '">';
 			return '<th class="' + (c.num ? 'ak-num' : '') + '">' + inp + '</th>';
 		}).join('');
 		el('t-head').innerHTML = '<tr>' + h1 + '</tr><tr class="ak-fr">' + h2 + '</tr>';
+	}
+	// Vorschlagsliste (nativer Browser-Dropdown, wie Excels Autofilter-Suche) fuer Spalten mit c.liste.
+	// werte: Array von Strings ODER von {id, name} (Lieferant -- beides anklickbar/tippbar, wie gewuenscht).
+	function fuelleVorschlagsliste(id, werte) {
+		var alt = document.getElementById(id);
+		if (alt) alt.remove();
+		var dl = document.createElement('datalist');
+		dl.id = id;
+		werte.forEach(function (w) {
+			var name = typeof w === 'string' ? w : w.name;
+			var wert = typeof w === 'string' ? w : w.id;
+			dl.insertAdjacentHTML('beforeend', '<option value="' + esc(wert) + '">' + esc(name) + '</option>');
+			if (typeof w !== 'string' && w.id !== w.name) {
+				dl.insertAdjacentHTML('beforeend', '<option value="' + esc(name) + '">' + esc(name) + '</option>');
+			}
+		});
+		root.appendChild(dl);
+	}
+	// Ein Treffer aus der Vorschlagsliste (Name oder Nummer, exakt getippt oder angeklickt) soll GENAU diesen
+	// einen Datensatz filtern -- sonst wuerde "Mastercard" per "enthaelt" auch "Mastercard Sven Worm" mittreffen.
+	function istGenauerTreffer(spalte, q) {
+		var liste = spalte === 'lieferant' ? opt.lieferanten : (spalte === 'item' ? opt.items : null);
+		if (!liste || !q) return false;
+		var ql = q.toLowerCase();
+		return liste.some(function (w) {
+			return typeof w === 'string' ? w.toLowerCase() === ql : (w.id.toLowerCase() === ql || w.name.toLowerCase() === ql);
+		});
 	}
 	function markSort() {
 		COLS.forEach(function (c) {
@@ -234,19 +276,19 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 
 	function bind() {
 		el('f-zeit').onchange = function (e) {
-			S.zeit = e.target.value; S.limit = 25;
+			schliesseKonten(); S.zeit = e.target.value; S.limit = 25;
 			el('g-von').style.display = el('g-bis').style.display = S.zeit === 'custom' ? '' : 'none';
 			load();
 		};
-		el('f-von').onchange = function (e) { S.von = e.target.value; load(); };
-		el('f-bis').onchange = function (e) { S.bis = e.target.value; load(); };
-		el('f-firma').onchange = function (e) { S.unternehmen = e.target.value; load(); };
-		el('f-kst').onchange = function (e) { S.kostenstelle = e.target.value; load(); };
-		el('f-bank').onchange = function (e) { S.bank = e.target.value; load(); };
-		el('f-konzern').onchange = function (e) { S.konzern = e.target.checked; load(); };
+		el('f-von').onchange = function (e) { schliesseKonten(); S.von = e.target.value; load(); };
+		el('f-bis').onchange = function (e) { schliesseKonten(); S.bis = e.target.value; load(); };
+		el('f-firma').onchange = function (e) { schliesseKonten(); S.unternehmen = e.target.value; load(); };
+		el('f-kst').onchange = function (e) { schliesseKonten(); S.kostenstelle = e.target.value; load(); };
+		el('f-bank').onchange = function (e) { schliesseKonten(); S.bank = e.target.value; load(); };
+		el('f-konzern').onchange = function (e) { schliesseKonten(); S.konzern = e.target.checked; load(); };
 		el('f-kz').onclick = function (e) {
 			var k = e.target.dataset.k; if (!k) return;
-			S.kennzahl = k;
+			schliesseKonten(); S.kennzahl = k;
 			root.querySelectorAll('#ak-f-kz button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); });
 			load();
 		};
@@ -269,29 +311,37 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 			clearTimeout(spaltenTimer);
 			spaltenTimer = setTimeout(function () {
 				var q = e.target.value.trim();
-				if (q) S.spalten[k] = q; else delete S.spalten[k];
+				// Trifft die Eingabe (getippt oder aus der Vorschlagsliste angeklickt) genau einen Namen oder eine
+				// Nummer aus der Liste, wird automatisch exakt statt "enthaelt" gefiltert -- siehe istGenauerTreffer().
+				if (q && istGenauerTreffer(k, q)) q = '"' + q + '"';
+				schliesseKonten(); if (q) S.spalten[k] = q; else delete S.spalten[k];
 				S.limit = 25;
 				load();
 			}, 200);
 		};
 		el('t-head').onchange = function (e) {
-			if (e.target.id === 'ak-col-kostenstelle') { S.kostenstelle = e.target.value; load(); }
-			if (e.target.id === 'ak-col-bank') { S.bank = e.target.value; load(); }
+			if (e.target.id === 'ak-col-kostenstelle') { schliesseKonten(); S.kostenstelle = e.target.value; load(); }
+			if (e.target.id === 'ak-col-bank') { schliesseKonten(); S.bank = e.target.value; load(); }
 		};
 		root.addEventListener('click', function (e) {
 			var t = e.target.closest('[data-kst],[data-konto],[data-tag],[data-gruppe],[data-x],#ak-konto-mehr,#ak-hint-all');
 			if (!t) return;
-			if (t.id === 'ak-hint-all') { e.preventDefault(); S.zeit = 'alle'; el('f-zeit').value = 'alle'; el('g-von').style.display = el('g-bis').style.display = 'none'; return load(); }
+			if (t.id === 'ak-hint-all') { e.preventDefault(); schliesseKonten(); S.zeit = 'alle'; el('f-zeit').value = 'alle'; el('g-von').style.display = el('g-bis').style.display = 'none'; return load(); }
 			if (t.id === 'ak-konto-mehr') { S.kontoMax = 999; return last && render(last); }
-			if (t.dataset.kst !== undefined) S.kostenstelle = S.kostenstelle === t.dataset.kst ? '' : t.dataset.kst;
+			if (t.dataset.kst !== undefined) { schliesseKonten(); S.kostenstelle = S.kostenstelle === t.dataset.kst ? '' : t.dataset.kst; }
 			else if (t.dataset.konto !== undefined) {
+				// Klick-Zyklus je Konto: zu -> offen (klappt jedes andere offene zu) -> gefiltert -> zu.
+				// Nur das Oeffnen bleibt clientseitig (die Items stecken schon in der Antwort); Filtern und
+				// Zuklappen eines Filters aendern die gezeigte Menge und brauchen deshalb einen Reload.
 				var k = t.dataset.konto;
-				if (!S.open[k]) { S.open[k] = true; return last && render(last); }
-				S.konto = S.konto === k ? '' : k;
+				if (S.konto === k) { S.konto = ''; S.open[k] = false; }
+				else if (S.open[k]) { S.konto = k; }
+				else { S.open = {}; S.open[k] = true; return last && render(last); }
 			}
-			else if (t.dataset.tag !== undefined) S.tag = S.tag === t.dataset.tag ? '' : t.dataset.tag;
-			else if (t.dataset.gruppe !== undefined) S.gruppen[t.dataset.gruppe] = !S.gruppen[t.dataset.gruppe];
+			else if (t.dataset.tag !== undefined) { schliesseKonten(); S.tag = S.tag === t.dataset.tag ? '' : t.dataset.tag; }
+			else if (t.dataset.gruppe !== undefined) { schliesseKonten(); S.gruppen[t.dataset.gruppe] = !S.gruppen[t.dataset.gruppe]; }
 			else if (t.dataset.x) {
+				schliesseKonten();
 				var x = t.dataset.x;
 				if (x.indexOf('gruppe:') === 0) S.gruppen[x.slice(7)] = false;
 				else if (x.indexOf('spalte:') === 0) { delete S.spalten[x.slice(7)]; syncSpalten(); }
@@ -310,12 +360,16 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		frappe.call({
 			method: API + 'get_optionen',
 			callback: function (r) {
-				var o = r.message || {unternehmen: [], kostenstellen: [], gruppen: []};
+				var o = r.message || {unternehmen: [], kostenstellen: [], gruppen: [], lieferanten: [], items: []};
 				opt.gruppen = o.gruppen;
+				opt.lieferanten = o.lieferanten || [];
+				opt.items = o.items || [];
 				o.unternehmen.forEach(function (u) { el('f-firma').insertAdjacentHTML('beforeend', '<option>' + esc(u) + '</option>'); });
 				var ks = o.kostenstellen.map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('');
 				el('f-kst').insertAdjacentHTML('beforeend', ks);
 				el('col-kostenstelle').insertAdjacentHTML('beforeend', ks);
+				fuelleVorschlagsliste('ak-liste-lieferant', opt.lieferanten);
+				fuelleVorschlagsliste('ak-liste-item', opt.items);
 				renderChips();
 				load();
 			}
