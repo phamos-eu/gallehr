@@ -64,6 +64,14 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		};
 	}
 
+	// Aufgeklappte Konten (S.open) sind nur im GERADE angezeigten Ausschnitt sinnvoll -- bei jedem Filterwechsel
+	// ausser dem Konto-Klick selbst wieder zuklappen, sonst sammeln sich Item-Listen aus laengst verlassenen
+	// Ansichten (anderer Zeitraum/Kostenstelle/...) unten an und sind nicht mehr nachvollziehbar.
+	function schliesseKonten() {
+		S.open = {};
+		S.kontoMax = 12;
+	}
+
 	function load() {
 		var id = ++reqId;
 		root.classList.add('ak-loading');
@@ -234,19 +242,19 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 
 	function bind() {
 		el('f-zeit').onchange = function (e) {
-			S.zeit = e.target.value; S.limit = 25;
+			schliesseKonten(); S.zeit = e.target.value; S.limit = 25;
 			el('g-von').style.display = el('g-bis').style.display = S.zeit === 'custom' ? '' : 'none';
 			load();
 		};
-		el('f-von').onchange = function (e) { S.von = e.target.value; load(); };
-		el('f-bis').onchange = function (e) { S.bis = e.target.value; load(); };
-		el('f-firma').onchange = function (e) { S.unternehmen = e.target.value; load(); };
-		el('f-kst').onchange = function (e) { S.kostenstelle = e.target.value; load(); };
-		el('f-bank').onchange = function (e) { S.bank = e.target.value; load(); };
-		el('f-konzern').onchange = function (e) { S.konzern = e.target.checked; load(); };
+		el('f-von').onchange = function (e) { schliesseKonten(); S.von = e.target.value; load(); };
+		el('f-bis').onchange = function (e) { schliesseKonten(); S.bis = e.target.value; load(); };
+		el('f-firma').onchange = function (e) { schliesseKonten(); S.unternehmen = e.target.value; load(); };
+		el('f-kst').onchange = function (e) { schliesseKonten(); S.kostenstelle = e.target.value; load(); };
+		el('f-bank').onchange = function (e) { schliesseKonten(); S.bank = e.target.value; load(); };
+		el('f-konzern').onchange = function (e) { schliesseKonten(); S.konzern = e.target.checked; load(); };
 		el('f-kz').onclick = function (e) {
 			var k = e.target.dataset.k; if (!k) return;
-			S.kennzahl = k;
+			schliesseKonten(); S.kennzahl = k;
 			root.querySelectorAll('#ak-f-kz button').forEach(function (b) { b.classList.toggle('on', b.dataset.k === k); });
 			load();
 		};
@@ -269,29 +277,34 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 			clearTimeout(spaltenTimer);
 			spaltenTimer = setTimeout(function () {
 				var q = e.target.value.trim();
-				if (q) S.spalten[k] = q; else delete S.spalten[k];
+				schliesseKonten(); if (q) S.spalten[k] = q; else delete S.spalten[k];
 				S.limit = 25;
 				load();
 			}, 200);
 		};
 		el('t-head').onchange = function (e) {
-			if (e.target.id === 'ak-col-kostenstelle') { S.kostenstelle = e.target.value; load(); }
-			if (e.target.id === 'ak-col-bank') { S.bank = e.target.value; load(); }
+			if (e.target.id === 'ak-col-kostenstelle') { schliesseKonten(); S.kostenstelle = e.target.value; load(); }
+			if (e.target.id === 'ak-col-bank') { schliesseKonten(); S.bank = e.target.value; load(); }
 		};
 		root.addEventListener('click', function (e) {
 			var t = e.target.closest('[data-kst],[data-konto],[data-tag],[data-gruppe],[data-x],#ak-konto-mehr,#ak-hint-all');
 			if (!t) return;
-			if (t.id === 'ak-hint-all') { e.preventDefault(); S.zeit = 'alle'; el('f-zeit').value = 'alle'; el('g-von').style.display = el('g-bis').style.display = 'none'; return load(); }
+			if (t.id === 'ak-hint-all') { e.preventDefault(); schliesseKonten(); S.zeit = 'alle'; el('f-zeit').value = 'alle'; el('g-von').style.display = el('g-bis').style.display = 'none'; return load(); }
 			if (t.id === 'ak-konto-mehr') { S.kontoMax = 999; return last && render(last); }
-			if (t.dataset.kst !== undefined) S.kostenstelle = S.kostenstelle === t.dataset.kst ? '' : t.dataset.kst;
+			if (t.dataset.kst !== undefined) { schliesseKonten(); S.kostenstelle = S.kostenstelle === t.dataset.kst ? '' : t.dataset.kst; }
 			else if (t.dataset.konto !== undefined) {
+				// Klick-Zyklus je Konto: zu -> offen (klappt jedes andere offene zu) -> gefiltert -> zu.
+				// Nur das Oeffnen bleibt clientseitig (die Items stecken schon in der Antwort); Filtern und
+				// Zuklappen eines Filters aendern die gezeigte Menge und brauchen deshalb einen Reload.
 				var k = t.dataset.konto;
-				if (!S.open[k]) { S.open[k] = true; return last && render(last); }
-				S.konto = S.konto === k ? '' : k;
+				if (S.konto === k) { S.konto = ''; S.open[k] = false; }
+				else if (S.open[k]) { S.konto = k; }
+				else { S.open = {}; S.open[k] = true; return last && render(last); }
 			}
-			else if (t.dataset.tag !== undefined) S.tag = S.tag === t.dataset.tag ? '' : t.dataset.tag;
-			else if (t.dataset.gruppe !== undefined) S.gruppen[t.dataset.gruppe] = !S.gruppen[t.dataset.gruppe];
+			else if (t.dataset.tag !== undefined) { schliesseKonten(); S.tag = S.tag === t.dataset.tag ? '' : t.dataset.tag; }
+			else if (t.dataset.gruppe !== undefined) { schliesseKonten(); S.gruppen[t.dataset.gruppe] = !S.gruppen[t.dataset.gruppe]; }
 			else if (t.dataset.x) {
+				schliesseKonten();
 				var x = t.dataset.x;
 				if (x.indexOf('gruppe:') === 0) S.gruppen[x.slice(7)] = false;
 				else if (x.indexOf('spalte:') === 0) { delete S.spalten[x.slice(7)]; syncSpalten(); }
