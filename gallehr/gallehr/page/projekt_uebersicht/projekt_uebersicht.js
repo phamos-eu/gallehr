@@ -130,6 +130,15 @@ function bindEvents() {
 	$(document).on('keydown', '#po-von, #po-bis', function (e) {
 		if (e.key === 'Enter') { e.preventDefault(); loadReport(); }
 	});
+	$(document).on('click', '.po-expandable > .po-row', function (e) {
+		// Links in der Zeile (Projekt, Kunde) behalten ihr normales Verhalten.
+		if ($(e.target).closest('a').length) return;
+		toggleItem($(this).parent());
+	});
+	$(document).on('dblclick', '.po-expandable > .po-row', function (e) {
+		if ($(e.target).closest('a').length) return;
+		openAuftragReport($(this).parent());
+	});
 	$(document).on('click', '#po-kennzahl-toggle button', function () {
 		currentKennzahl = $(this).data('kennzahl');
 		$('#po-kennzahl-toggle button').removeClass('active');
@@ -167,9 +176,15 @@ function buildReportLink(filters) {
 	return '/app/query-report/Projekt%20%C3%9Cbersicht?' + params.join('&');
 }
 
+// Filter, mit denen die aktuell sichtbaren Zahlen entstanden sind -- das
+// Aufklappen der Zeilen (Auftraege je Projekt/PM) muss exakt dieselben
+// Filter benutzen, sonst stimmen die Unterzeilen nicht mit der Zeile ueberein.
+var activeFilters = null;
+
 function loadReport() {
 	var filters = getFilters();
 	if (!filters.von || !filters.bis) return;
+	activeFilters = filters;
 
 	$('#po-typ-rows, #po-proj-rows, #po-kunde-rows, #po-pm-rows').html('<div class="po-loading">Laden...</div>');
 
@@ -308,14 +323,130 @@ function renderView(prefix, rowsForView, color, reportLink) {
 			nameHtml += '<span class="po-noorder-badge" title="' + frappe.utils.escape_html(ohneAuftragHinweis) + '">ohne Auftrag</span>';
 		}
 
+		// Projekt und PM sind aufklappbar (Klick = Auftraege/Projekte darunter,
+		// Doppelklick = Report-Ansicht der Auftraege) -- Rueckmeldung Tester
+		// 01.10.2026: "welche Kosten kommen aus welchen/wievielen Auftraegen".
+		var expandable = (prefix === 'proj' || prefix === 'pm') && key;
+		var itemAttrs = expandable
+			? ' class="po-item po-expandable" data-scope="' + (prefix === 'pm' ? 'pm' : 'projekt') + '" data-key="' + frappe.utils.escape_html(key) + '"'
+			: ' class="po-item"';
 		html +=
+			'<div' + itemAttrs + '>' +
 			'<div class="po-row">' +
-			'<span class="po-rank">' + (i + 1) + '</span>' +
+			'<span class="po-rank">' + (expandable ? '<i class="po-caret">▸</i>' : (i + 1)) + '</span>' +
 			'<span class="po-name" title="' + frappe.utils.escape_html(label) + '">' + nameHtml + '</span>' +
 			'<span class="po-amt">' + fmt(umsatz) + '</span>' +
 			'<span class="po-pct">' + fmtPct(anteil) + '</span>' +
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pctWidth + '%; background:' + color + '"></span></span>' +
+			'</div>' +
+			(expandable ? '<div class="po-sub" style="display:none;"></div>' : '') +
 			'</div>';
 	});
 	container.html(html);
+}
+
+
+// --- Aufklappen: Projekt -> Auftraege, PM -> Projekte -> Auftraege ---------
+
+var subCache = {};
+
+function subCacheKey(scope, key) {
+	return JSON.stringify([scope, key, activeFilters]);
+}
+
+function fetchSub(scope, key) {
+	var ck = subCacheKey(scope, key);
+	if (subCache[ck]) return subCache[ck];
+	var f = activeFilters;
+	subCache[ck] = new Promise(function (resolve, reject) {
+		frappe.call({
+			method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_auftraege',
+			args: {
+				scope: scope, key: key, von: f.von, bis: f.bis, kennzahl: f.kennzahl,
+				status: f.status, unternehmen: f.unternehmen, projektauswahl: f.projektauswahl
+			},
+			callback: function (r) { resolve(r.message); },
+			error: function () { delete subCache[ck]; reject(); }
+		});
+	});
+	return subCache[ck];
+}
+
+function toggleItem($item) {
+	var $sub = $item.children('.po-sub');
+	var open = !$sub.is(':visible');
+	$item.toggleClass('po-open', open);
+	$sub.toggle(open);
+	if (!open || $item.data('loaded')) return;
+
+	$sub.html('<div class="po-sub-loading">Laden...</div>');
+	fetchSub($item.data('scope'), $item.data('key')).then(function (data) {
+		$item.data('loaded', true);
+		$sub.html(renderSub(data));
+	}, function () {
+		$sub.html('<div class="po-sub-loading">Fehler beim Laden</div>');
+	});
+}
+
+function renderSub(data) {
+	if (!data.rows.length) {
+		return '<div class="po-sub-loading">Keine Aufträge im gewählten Zeitraum</div>';
+	}
+	var isPm = data.scope === 'pm';
+	var html = '';
+	data.rows.forEach(function (r) {
+		var pct = Math.max(Math.min(r.anteil || 0, 100), 0);
+		if (isPm) {
+			// Projekt unterhalb eines PM -- klappt selbst zu den Auftraegen auf.
+			html += '<div class="po-item po-expandable po-subitem" data-scope="projekt" data-key="' + frappe.utils.escape_html(r.key) + '">' +
+				'<div class="po-row po-subrow">' +
+				'<span class="po-rank"><i class="po-caret">▸</i></span>' +
+				'<span class="po-name"><span class="po-name-text" title="' + frappe.utils.escape_html(r.label) + '">' + frappe.utils.escape_html(r.label) + '</span></span>' +
+				'<span class="po-amt">' + fmt(r.umsatz) + '</span>' +
+				'<span class="po-pct">' + fmtPct(r.anteil) + '</span>' +
+				'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pct + '%; background:#378ADD"></span></span>' +
+				'</div><div class="po-sub" style="display:none;"></div></div>';
+			return;
+		}
+		var name;
+		if (r.ohne_auftrag) {
+			name = '<span class="po-name-text po-muted">ohne Auftragszuordnung</span>';
+		} else {
+			name = '<span class="po-name-text"><a href="/app/sales-order/' + encodeURIComponent(r.name) + '" target="_blank">' +
+				frappe.utils.escape_html(r.name) + '</a></span>' +
+				(r.datum ? '<span class="po-sub-date">' + frappe.datetime.str_to_user(r.datum) + '</span>' : '') +
+				(r.positionen > 1 ? '<span class="po-sub-date">' + r.positionen + ' Pos.</span>' : '');
+		}
+		html += '<div class="po-row po-subrow">' +
+			'<span class="po-rank"></span>' +
+			'<span class="po-name">' + name + '</span>' +
+			'<span class="po-amt">' + fmt(r.umsatz) + '</span>' +
+			'<span class="po-pct">' + fmtPct(r.anteil) + '</span>' +
+			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pct + '%; background:#999"></span></span>' +
+			'</div>';
+	});
+	var n = data.rows.filter(function (r) { return !r.ohne_auftrag; }).length;
+	var unit = isPm ? (n === 1 ? 'Projekt' : 'Projekte') : (n === 1 ? 'Auftrag' : 'Aufträge');
+	html += '<div class="po-sub-foot">' + n + ' ' + unit + ' · ' + fmt(data.gesamt) + '</div>';
+	return html;
+}
+
+// Doppelklick: Sales-Order-Reportansicht (Spalten/Summen waehlbar) fuer das
+// Projekt bzw. alle Projekte des PM. Gleicher Tab -- popup-sicher, "Zurück"
+// kommt wieder auf die Uebersicht. Datumsfilter bewusst nicht gesetzt: der
+// Report zeigt alle submitted Auftraege des Projekts, die Zeitraum-Aufteilung
+// steht in der aufgeklappten Liste.
+function openAuftragReport($item) {
+	var scope = $item.data('scope');
+	var key = $item.data('key');
+	var base = '/app/sales-order/view/report?docstatus=1&project=';
+	if (scope === 'projekt') {
+		window.location.href = base + encodeURIComponent(key);
+		return;
+	}
+	fetchSub('pm', key).then(function (data) {
+		var keys = data.rows.map(function (r) { return r.key; });
+		if (!keys.length) return;
+		window.location.href = base + encodeURIComponent(JSON.stringify(['in', keys]));
+	});
 }

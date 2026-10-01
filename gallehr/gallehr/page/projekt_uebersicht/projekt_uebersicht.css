@@ -325,3 +325,16 @@
 @media (max-width: 900px) {
   .po-grid { grid-template-columns: 1fr; }
 }
+
+/* Aufklappbare Zeilen (Projekt/PM -> Auftraege) */
+.po-expandable > .po-row { cursor: pointer; }
+.po-expandable > .po-row:hover { background: var(--bg-color); }
+.po-caret { font-style: normal; display: inline-block; transition: transform 0.12s; }
+.po-open > .po-row .po-caret { transform: rotate(90deg); }
+.po-sub { margin: 0 0 4px 22px; padding-left: 8px; border-left: 2px solid var(--border-color); }
+.po-subrow { padding-top: 4px; padding-bottom: 3px; }
+.po-subrow .po-name { font-size: 11.5px; }
+.po-sub-date { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
+.po-muted { color: var(--text-muted); font-style: italic; }
+.po-sub-loading { padding: 6px; font-size: 11px; color: var(--text-muted); }
+.po-sub-foot { padding: 3px 6px 4px; font-size: 10.5px; color: var(--text-muted); text-align: right; }
