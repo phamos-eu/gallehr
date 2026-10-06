@@ -32,3 +32,21 @@ fixtures = [
 override_whitelisted_methods = {
     "frappe.desk.search.search_link": "gallehr.override.search.search_link",
 }
+
+# AK Auswertung v2: haelt ak_kategorie/ak_aufwandskonto/ak_zuordnung/ak_stand auf Bank Transaction aktuell.
+# doc_events faengt die normalen Speicherwege (Abgleich, Loesen, Storno eines verknuepften Belegs); der
+# taegliche Job faengt Direktschreiben durch den Abgleich-Wizard und spaetere Aenderungen an verknuepften
+# Belegen (z.B. Anzahlung -> spaeter Rechnung); after_migrate befuellt bei jedem Deploy, ohne Handarbeit.
+doc_events = {
+    "Bank Transaction": {
+        "on_submit": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
+        "on_update_after_submit": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
+        "on_cancel": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
+    }
+}
+
+scheduler_events = {
+    "daily": ["gallehr.gallehr.bank_zuordnung.taeglich"],
+}
+
+after_migrate = ["gallehr.gallehr.bank_zuordnung.nach_migration"]

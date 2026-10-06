@@ -39,6 +39,7 @@ def normalisiere(filters):
 		"unternehmen": f.get("unternehmen") or "",
 		"kostenstelle": f.get("kostenstelle") or "",
 		"bank": f.get("bank") or "",
+		"quelle": f.get("quelle") or "",
 		"kennzahl": "brutto" if f.get("kennzahl") == "brutto" else "netto",
 		"konzern_ausblenden": 0 if f.get("konzern_ausblenden") in (0, "0", False) else 1,
 		"gruppen": [g for g in (f.get("gruppen") or []) if g],
@@ -128,6 +129,8 @@ def anwenden(zeilen, f, ohne=()):
 			continue
 		if "bank" not in ohne and f["bank"] and z["bank_status"] != f["bank"]:
 			continue
+		if "quelle" not in ohne and f["quelle"] and z["quelle"] != f["quelle"]:
+			continue
 		if "konto" not in ohne and f["konto"] and z["konto_nr"] != f["konto"]:
 			continue
 		if "tag" not in ohne:
@@ -189,10 +192,10 @@ def _sortiert(zeilen, f):
 
 
 def zeile_fuer_tabelle(z, f):
-	return {"datum": z["datum"], "beleg": z["beleg"], "beleg_typ": z["beleg_typ"], "lieferant": z["lieferant"],
-		"konto_nr": z["konto_nr"], "konto_name": z["konto_name"], "item": z["item"], "kostenstelle": z["kostenstelle"],
-		"kostenstelle_quelle": z["kostenstelle_quelle"], "betrag": betrag(z, f), "bt": z["bt"], "bank_status": z["bank_status"],
-		"tags": z["tags"]}
+	return {"datum": z["datum"], "quelle": z["quelle"], "beleg": z["beleg"], "beleg_typ": z["beleg_typ"],
+		"lieferant": z["lieferant"], "konto_nr": z["konto_nr"], "konto_name": z["konto_name"], "item": z["item"],
+		"kostenstelle": z["kostenstelle"], "kostenstelle_quelle": z["kostenstelle_quelle"], "betrag": betrag(z, f),
+		"bt": z["bt"], "bank_status": z["bank_status"], "tags": z["tags"]}
 
 
 def bericht(zeilen, f, limit=25, offset=0):

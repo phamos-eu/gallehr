@@ -14,6 +14,9 @@ from gallehr.gallehr.page.ak_auswertung.quellen.eingangsrechnung import NICHT_ZU
 
 
 def _check_permission():
+	# Nur Purchase Invoice ist Pflicht (v1-Verhalten unveraendert). Journal Entry (v2/Bankbuchung) wird pro
+	# Quelle einzeln geprueft (quellen.alle_zeilen) -- fehlt das Recht, faellt die Seite auf v1-Umfang zurueck,
+	# statt ganz zu blockieren (siehe quellen/__init__.py).
 	if not frappe.has_permission("Purchase Invoice", "read"):
 		frappe.throw(_("Keine Berechtigung fuer Eingangsrechnungen"), frappe.PermissionError)
 
@@ -54,16 +57,16 @@ def export_excel(filters=None):
 
 	f = auswertung.normalisiere(filters)
 	zeilen = auswertung.alle_gefiltert_sortiert(_zeilen(f), f)
-	kopf = ["Datum", "Beleg", "Lieferant", "Konto", "Kontobezeichnung", "Item", "Item Group", "Unternehmen", "Kostenstelle",
-		"Kostenstelle aus", "Netto EUR", "Brutto EUR", "Bank-Status", "Bank Transaction", "Tags", "Rueckgabe"]
+	kopf = ["Datum", "Quelle", "Beleg", "Lieferant", "Konto", "Kontobezeichnung", "Item", "Item Group", "Unternehmen",
+		"Kostenstelle", "Kostenstelle aus", "Netto EUR", "Brutto EUR", "Bank-Status", "Bank Transaction", "Tags", "Rueckgabe"]
 	rows = [kopf]
 	for z in zeilen:
-		rows.append([z["datum"], z["beleg"], z["lieferant"], z["konto_nr"], z["konto_name"], z["item"], z["item_group"],
-			z["unternehmen"], z["kostenstelle"], z["kostenstelle_quelle"], z["netto"], z["brutto"],
+		rows.append([z["datum"], z["quelle"], z["beleg"], z["lieferant"], z["konto_nr"], z["konto_name"], z["item"],
+			z["item_group"], z["unternehmen"], z["kostenstelle"], z["kostenstelle_quelle"], z["netto"], z["brutto"],
 			"Bank bestaetigt" if z["bank_status"] == "bank" else "Ohne Bank-Bestaetigung", z["bt"], ", ".join(z["tags"]),
 			"ja" if z["rueckgabe"] else ""])
 	rows.append(["", "Summe", "", "", "", "", "", "", "", "", sum(z["netto"] for z in zeilen), sum(z["brutto"] for z in zeilen)])
 	xlsx = make_xlsx(rows, "AK Auswertung")
-	frappe.response["filename"] = "AK_Auswertung_Eingangsrechnungen_%s_%s.xlsx" % (f["von"], f["bis"])
+	frappe.response["filename"] = "AK_Auswertung_%s_%s.xlsx" % (f["von"], f["bis"])
 	frappe.response["filecontent"] = xlsx.getvalue()
 	frappe.response["type"] = "binary"
