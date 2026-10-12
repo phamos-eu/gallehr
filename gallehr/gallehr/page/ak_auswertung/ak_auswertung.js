@@ -13,12 +13,13 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 	// Zustand der Seite. Alles, was die Zahlen beeinflusst, geht als "filters" ans Backend (eine Quelle der Wahrheit
 	// fuer Kopfsumme, Karten, Tabelle und Excel); nur "open" (aufgeklappte Konten) ist rein clientseitig.
 	var S = {
-		zeit: 'jahr', von: '', bis: '', unternehmen: '', kostenstelle: '', bank: '', kennzahl: 'netto', konzern: true,
+		zeit: 'jahr', von: '', bis: '', unternehmen: '', kostenstelle: '', bank: '', quelle: '', kennzahl: 'netto', konzern: true,
 		gruppen: {}, tag: '', konto: '', spalten: {}, sort: {k: 'betrag', richtung: -1, abs: true},
 		limit: 25, open: {}, kontoMax: 12
 	};
 	var COLS = [
 		{k: 'datum', label: 'Datum', ph: '2026-03 / >2026-05', tip: 'Teil des Datums (2026-03) oder Vergleich: >2026-05-01, <=2026-06.'},
+		{k: 'quelle', label: 'Quelle', type: 'quelle'},
 		{k: 'beleg', label: 'Beleg', ph: 'Beleg'},
 		{k: 'lieferant', label: 'Lieferant', ph: 'Name oder Nummer', liste: 'ak-liste-lieferant',
 			tip: 'Name oder Lieferantennummer, auch teilweise. Vorschlagsliste beim Tippen anklickbar -- ein Vorschlag grenzt genau auf diesen einen Lieferanten ein (sonst würde z. B. "Mastercard" auch "Mastercard Sven Worm" mittreffen).'},
@@ -59,7 +60,7 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 	function filters(zeit) {
 		var r = zeit ? zeit : range();
 		return {
-			von: r[0], bis: r[1], unternehmen: S.unternehmen, kostenstelle: S.kostenstelle, bank: S.bank,
+			von: r[0], bis: r[1], unternehmen: S.unternehmen, kostenstelle: S.kostenstelle, bank: S.bank, quelle: S.quelle,
 			kennzahl: S.kennzahl, konzern_ausblenden: S.konzern ? 1 : 0,
 			gruppen: Object.keys(S.gruppen).filter(function (k) { return S.gruppen[k]; }),
 			tag: S.tag, konto: S.konto, spalten: S.spalten, sortierung: S.sort
@@ -153,23 +154,29 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		renderChips();
 		el('f-kst').value = S.kostenstelle;
 		el('f-bank').value = S.bank;
-		if (el('col-kostenstelle')) { el('col-kostenstelle').value = S.kostenstelle; el('col-bank').value = S.bank; }
+		if (el('col-kostenstelle')) { el('col-kostenstelle').value = S.kostenstelle; el('col-bank').value = S.bank; el('col-quelle').value = S.quelle; }
 		markSort();
 	}
+
+	// Beleg-Link: der Beleg-Typ unterscheidet sich je Quelle (Eingangsrechnung -> Purchase Invoice,
+	// Bankbuchung -> Journal Entry) -- der Routen-Slug von Frappe ist einfach klein/mit Bindestrich.
+	var BELEG_ROUTE = {'Purchase Invoice': 'purchase-invoice', 'Journal Entry': 'journal-entry'};
 
 	function renderTabelle(d) {
 		el('t-n').textContent = d.zeilen_anzahl.toLocaleString('de-DE') + ' Zeilen · Summe ' + eur(d.summe);
 		el('t-body').innerHTML = d.zeilen.map(function (z) {
 			var bt = z.bt ? '<a href="/app/bank-transaction/' + encodeURIComponent(z.bt) + '" target="_blank" class="ak-pill good">' + esc(z.bt) + '</a>' :
 				'<span class="ak-pill off">ohne Bank</span>';
-			return '<tr><td>' + z.datum + '</td><td><a href="/app/purchase-invoice/' + encodeURIComponent(z.beleg) + '" target="_blank">' + esc(z.beleg) + '</a></td>' +
+			var route = BELEG_ROUTE[z.beleg_typ] || 'purchase-invoice';
+			return '<tr><td>' + z.datum + '</td><td>' + esc(z.quelle) + '</td>' +
+				'<td><a href="/app/' + route + '/' + encodeURIComponent(z.beleg) + '" target="_blank">' + esc(z.beleg) + '</a></td>' +
 				'<td class="ak-trunc" title="' + esc(z.lieferant) + '">' + esc(z.lieferant) + '</td>' +
 				'<td class="ak-trunc" title="' + esc(z.konto_nr + ' ' + z.konto_name) + '">' + esc(z.konto_nr + ' ' + z.konto_name) + '</td>' +
 				'<td class="ak-trunc" title="' + esc(z.item) + '">' + esc(z.item) + '</td>' +
 				'<td>' + esc(z.kostenstelle) + (z.kostenstelle_quelle === 'Tag' ? ' <span class="ak-pill">per Tag</span>' : '') + '</td>' +
 				'<td class="ak-num">' + eur(z.betrag) + '</td><td>' + bt + '</td>' +
 				'<td>' + z.tags.map(function (t) { return '<span class="ak-pill">' + esc(t) + '</span>'; }).join('') + '</td></tr>';
-		}).join('') || '<tr><td colspan="9" class="ak-empty" id="ak-leer">Keine Zeilen im Ausschnitt</td></tr>';
+		}).join('') || '<tr><td colspan="10" class="ak-empty" id="ak-leer">Keine Zeilen im Ausschnitt</td></tr>';
 		el('t-more').textContent = d.zeilen_anzahl > d.zeilen.length ? 'Weitere ' + (d.zeilen_anzahl - d.zeilen.length) + ' Zeilen anzeigen' : '';
 		if (!d.zeilen.length) leerHinweis();
 	}
@@ -202,6 +209,7 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		if (S.tag) act.push(['tag', 'Tag: ' + S.tag]);
 		Object.keys(S.gruppen).filter(function (g) { return S.gruppen[g]; }).forEach(function (g) { act.push(['gruppe:' + g, 'Tag-Gruppe: ' + g]); });
 		if (S.bank) act.push(['bank', 'Bank-Status: ' + (S.bank === 'bank' ? 'bestätigt' : 'ohne')]);
+		if (S.quelle) act.push(['quelle', 'Quelle: ' + S.quelle]);
 		COLS.forEach(function (c) {
 			if (!S.spalten[c.k]) return;
 			var wert = S.spalten[c.k], genau = wert.length >= 2 && wert[0] === '"' && wert[wert.length - 1] === '"';
@@ -221,6 +229,7 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 			var inp;
 			if (c.type === 'kst') inp = '<select id="ak-col-kostenstelle"><option value="">Alle</option></select>';
 			else if (c.type === 'bank') inp = '<select id="ak-col-bank"><option value="">Alle</option><option value="bank">Bank bestätigt</option><option value="ohne">Ohne Bank</option></select>';
+			else if (c.type === 'quelle') inp = '<select id="ak-col-quelle"><option value="">Alle</option><option value="Eingangsrechnung">Eingangsrechnung</option><option value="Bankbuchung">Bankbuchung</option></select>';
 			else inp = '<input type="text" data-col="' + c.k + '"' + (c.liste ? ' list="' + c.liste + '"' : '') +
 				' placeholder="' + esc(c.ph || 'Filter') + '" title="' + esc(c.tip || 'enthält (Groß-/Kleinschreibung egal)') + '">';
 			return '<th class="' + (c.num ? 'ak-num' : '') + '">' + inp + '</th>';
@@ -266,7 +275,7 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 	function resetAll() {
 		Object.assign(S, {
 			zeit: 'jahr', von: '', bis: '', unternehmen: '', kostenstelle: '', bank: '', kennzahl: 'netto', konzern: true,
-			gruppen: {}, tag: '', konto: '', spalten: {}, sort: {k: 'betrag', richtung: -1, abs: true}, limit: 25, open: {}, kontoMax: 12
+			quelle: '', gruppen: {}, tag: '', konto: '', spalten: {}, sort: {k: 'betrag', richtung: -1, abs: true}, limit: 25, open: {}, kontoMax: 12
 		});
 		el('f-zeit').value = 'jahr'; el('f-firma').value = ''; el('f-konzern').checked = true;
 		el('g-von').style.display = el('g-bis').style.display = 'none';
@@ -322,6 +331,7 @@ frappe.pages['ak-auswertung'].on_page_load = function (wrapper) {
 		el('t-head').onchange = function (e) {
 			if (e.target.id === 'ak-col-kostenstelle') { schliesseKonten(); S.kostenstelle = e.target.value; load(); }
 			if (e.target.id === 'ak-col-bank') { schliesseKonten(); S.bank = e.target.value; load(); }
+			if (e.target.id === 'ak-col-quelle') { schliesseKonten(); S.quelle = e.target.value; load(); }
 		};
 		root.addEventListener('click', function (e) {
 			var t = e.target.closest('[data-kst],[data-konto],[data-tag],[data-gruppe],[data-x],#ak-konto-mehr,#ak-hint-all');
