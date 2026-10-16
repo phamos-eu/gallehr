@@ -172,6 +172,10 @@
   color: #534AB7 !important;
 }
 
+.fd-color-muted {
+  color: var(--text-muted) !important;
+}
+
 .fd-bottom-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

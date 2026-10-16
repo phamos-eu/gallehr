@@ -14,7 +14,7 @@ CUSTOMER = "Daimler Truck AG"
 ITEM = "Dienstleistung"
 
 KEYS = ["Umsatz Ist (Einnahmen YTD Netto)", "Umsatz Soll (Brutto/Jahr)",
-	"Outstanding bestehende Auftraege", "Liegende Angebote", "Angebots-Anteil",
+	"Outstanding bestehende Auftraege", "Outstanding bis 31.12.2026", "Liegende Angebote", "Angebots-Anteil",
 	"Reale Umsatzluecke (Ist+Out-Soll)", "Vorraussichtliche Umsatzluecke (Absehbar-Soll)"]
 
 
@@ -88,7 +88,7 @@ def run():
 	# Reale Umsatzluecke > 0 bedeutet per Definition: Ist+Outstanding allein
 	# decken das Soll, unabhaengig von jedem Angebot. Das ist exakt die vom
 	# Nutzer gesuchte Kennzahl -- kein neues Feld noetig, siehe Antworttext.
-	c5 = after["Umsatz Ist (Einnahmen YTD Netto)"] + after["Outstanding bestehende Auftraege"] >= after["Umsatz Soll (Brutto/Jahr)"]
+	c5 = after["Umsatz Ist (Einnahmen YTD Netto)"] + after["Outstanding bis 31.12.2026"] >= after["Umsatz Soll (Brutto/Jahr)"]
 	checks.append(c5)
 	print(f"  Ist + Outstanding >= Soll (Definition 'ausreichend ohne Angebote'):", "OK" if c5 else "FEHLER")
 
