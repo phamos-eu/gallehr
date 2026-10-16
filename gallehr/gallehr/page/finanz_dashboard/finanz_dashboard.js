@@ -232,7 +232,8 @@ function processReport(rows, jahr) {
 	// identisch mit dem Vorzeichen von realLuecke (>=0 <=> Deckungsgrad >=100%),
 	// hier nur als eigene, direkt unter Vorr. Umsatzlücke platzierte Prozentzahl
 	// ausgewiesen, damit die Antwort nicht implizit im Vorzeichen versteckt ist.
-	var outstanding = peur('Outstanding');
+	// Nur der Teil bis 31.12. des gewaehlten Jahres steht dem einjaehrigen Soll gegenueber.
+	var outstanding = peur('Outstanding bis');
 	var deckungsgrad = soll > 0 ? (ist + outstanding) / soll * 100 : 0;
 	var deckungClass = deckungsgrad >= 100 ? 'fd-color-green' : 'fd-color-red';
 
@@ -402,31 +403,44 @@ function loadAngebote() {
 }
 
 function loadOutstanding() {
+	// Stichtag = 31.12. des gewaehlten Jahres -- dieselbe Jahr-Auswahl wie Umsatz Soll/Ist,
+	// damit die Karte dem einjaehrigen Soll gegenuebersteht. Der Report teilt jede Zeile
+	// in "bis Stichtag" (inkl. Ueberfaelligem aus Vorjahren) und "nach Stichtag".
+	var jahr = getFilters().jahr;
+	var stichtag = jahr + '-12-31';
 	frappe.call({
 		method: 'frappe.desk.query_report.run',
-		args: { report_name: 'Outstanding Report', filters: {}, ignore_prepared_report: true },
+		args: { report_name: 'Outstanding Report', filters: { stichtag: stichtag }, ignore_prepared_report: true },
 		callback: function (r) {
 			if (!r.message || !r.message.result) { $('#fd-outstanding-rows').html('<div class="fd-loading">Keine Daten</div>'); return; }
-			var rows = r.message.result, unbilled = 0, invoicedNotPaid = 0;
+			var rows = r.message.result, unbilled = 0, invoicedNotPaid = 0, unbilledLater = 0, invoicedLater = 0;
 			rows.forEach(function (row) {
 				var type = row.type !== undefined ? row.type : row[10];
 				var uAmt = row.unbilled_netto !== undefined ? row.unbilled_netto : (row[7] || 0);
 				var iAmt = row.invoice_outstanding_netto !== undefined ? row.invoice_outstanding_netto : (row[8] || 0);
-				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') unbilled += uAmt;
-				else if (type === 'Invoiced Not Paid') invoicedNotPaid += iAmt;
+				var uLater = row.unbilled_spaeter_netto !== undefined ? row.unbilled_spaeter_netto : (row[12] || 0);
+				var iLater = row.invoice_spaeter_netto !== undefined ? row.invoice_spaeter_netto : (row[13] || 0);
+				if (type === 'Not Yet Invoiced' || type === 'Partially Invoiced') { unbilled += uAmt; unbilledLater += uLater; }
+				else if (type === 'Invoiced Not Paid') { invoicedNotPaid += iAmt; invoicedLater += iLater; }
 			});
 			var total = unbilled + invoicedNotPaid;
-			// All three link into Outstanding Report -- the report these numbers are
+			var later = unbilledLater + invoicedLater;
+			var totalYear = total - later;
+			// All rows link into Outstanding Report -- the report these numbers are
 			// summed from, one row per document, with the Netto columns visible and a
 			// Type column separating the two buckets. The previous links pointed at
 			// filtered Sales Order / Sales Invoice list views whose filters did not
 			// match the report's WHERE clause (e.g. status "To Deliver and Bill" was
 			// excluded, and list views show Brutto, not the Netto shown here).
-			var outLink = '/app/query-report/Outstanding%20Report';
+			// ?stichtag= opens the report with the same cut as the card.
+			var outLink = '/app/query-report/Outstanding%20Report?stichtag=' + encodeURIComponent(stichtag);
+			var nextYear = parseInt(jahr, 10) + 1;
 			$('#fd-outstanding-rows').html(
-				'<div class="fd-row"><span class="fd-row-label">Unbilled (nicht fakturiert)</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-blue">' + fmt(unbilled) + '</a></div>' +
-				'<div class="fd-row"><span class="fd-row-label">Invoiced not paid</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-amber">' + fmt(invoicedNotPaid) + '</a></div>' +
-				'<div class="fd-row fd-row-total"><span class="fd-row-label">Total Expected (Netto)</span><a href="' + outLink + '" target="_blank" class="fd-row-val fd-link-val fd-color-green">' + fmt(total) + '</a></div>'
+				fdRow('Unbilled bis 31.12.' + jahr, fmt(unbilled - unbilledLater), 'fd-color-blue', outLink) +
+				fdRow('Invoiced not paid', fmt(invoicedNotPaid - invoicedLater), 'fd-color-amber', outLink) +
+				fdRowTotal('<span title="inkl. Überfälligem aus Vorjahren">Total Expected ' + jahr + ' (Netto)</span>', fmt(totalYear), 'fd-color-green', outLink) +
+				fdRow('+ Folgejahre (ab ' + nextYear + ')', fmt(later), 'fd-color-muted', outLink) +
+				fdRow('Total alle Jahre', fmt(total), 'fd-color-muted', outLink)
 			);
 		}
 	});
