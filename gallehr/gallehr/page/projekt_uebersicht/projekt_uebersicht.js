@@ -252,6 +252,9 @@ function processReport(rows, filters) {
 	renderView('proj', byView.projekt, '#378ADD', reportLink);
 	renderView('kunde', byView.kunde, '#639922', reportLink);
 	renderView('pm', byView.pm, '#534AB7', reportLink);
+
+	// 0-EUR-Projekte erklaeren (Beleg ausserhalb Zeitraum / nur Projektlaufzeit ...)
+	loadNullzeilenBadges($('#po-proj-rows'), byView.projekt, filters);
 }
 
 function renderView(prefix, rowsForView, color, reportLink) {
@@ -383,17 +386,88 @@ function toggleItem($item) {
 	fetchSub($item.data('scope'), $item.data('key')).then(function (data) {
 		$item.data('loaded', true);
 		$sub.html(renderSub(data));
+		if (data.scope === 'pm') loadNullzeilenBadges($sub, data.rows, activeFilters);
 	}, function () {
 		$sub.html('<div class="po-sub-loading">Fehler beim Laden</div>');
 	});
 }
 
-function renderSub(data) {
-	if (!data.rows.length) {
-		return '<div class="po-sub-loading">Keine Aufträge im gewählten Zeitraum</div>';
+// Badge fuer Zeilen mit 0 EUR: warum steht das Projekt hier, obwohl nichts
+// zaehlt? Rueckmeldung Tester 16.10.2026 ("Auftraege nicht gescheit gezogen"):
+// ein Auftrag mit Liefertermin nach dem Zeitraum zaehlt dort 0 EUR, sah aber aus
+// wie "Auftrag fehlt". Ein Aufruf fuer alle 0-EUR-Zeilen eines Containers.
+function loadNullzeilenBadges($container, rows, filters) {
+	var keys = [];
+	rows.forEach(function (row) {
+		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
+		var key = row.key !== undefined ? row.key : row[4];
+		if (key && !umsatz) keys.push(key);
+	});
+	if (!keys.length) return;
+
+	frappe.call({
+		method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_nullzeilen_hinweise',
+		args: { keys: keys, von: filters.von, bis: filters.bis, kennzahl: filters.kennzahl },
+		callback: function (r) {
+			// Filter zwischenzeitlich gewechselt -> Antwort gehoert zu alten Zeilen.
+			if (activeFilters !== filters) return;
+			var hints = r.message || {};
+			$container.find('.po-expandable').each(function () {
+				var h = hints[$(this).attr('data-key')];
+				if (!h) return;
+				$(this).children('.po-row').find('.po-name').append(
+					'<span class="po-noorder-badge" title="' + frappe.utils.escape_html(h.title) + '">' +
+					frappe.utils.escape_html(h.text) + '</span>'
+				);
+			});
+		}
+	});
+}
+
+function renderSubEmptyText(data) {
+	if (data.scope === 'pm') return 'Keine Projekte im gewählten Zeitraum';
+	var beleg = data.kennzahl === 'Auftragswert' ? 'Auftrag' : 'Rechnung';
+	var artikel = data.kennzahl === 'Auftragswert' ? 'Kein' : 'Keine';
+	if ((data.ausserhalb || []).length) {
+		return artikel + ' ' + beleg + ' zählt im gewählten Zeitraum.';
 	}
+	var text = artikel + ' ' + beleg + ' am Projekt hinterlegt.';
+	var lz = data.laufzeit || {};
+	if (lz.im_zeitraum) {
+		text += ' Im Zeitraum nur wegen der geplanten Projektlaufzeit (Start ' +
+			(lz.start ? frappe.datetime.str_to_user(lz.start) : '–') + ' · Ende ' +
+			(lz.ende ? frappe.datetime.str_to_user(lz.ende) : '–') + ').';
+	}
+	return text;
+}
+
+// Belege, die nicht in die Zahl der Zeile einfliessen (grau, mit Grund) --
+// Summe/Anteil/Footer zaehlen sie bewusst nicht mit.
+function renderSubOutside(list) {
+	var html = '<div class="po-sub-outhead">Nicht im Zeitraum – zählt nicht mit</div>';
+	list.forEach(function (o) {
+		var route = o.doctype === 'Sales Invoice' ? 'sales-invoice' : 'sales-order';
+		html += '<div class="po-row po-subrow po-sub-out">' +
+			'<span class="po-rank"></span>' +
+			'<span class="po-name"><span class="po-name-text"><a href="/app/' + route + '/' + encodeURIComponent(o.name) + '" target="_blank">' +
+			frappe.utils.escape_html(o.name) + '</a></span>' +
+			(o.datum ? '<span class="po-sub-date">' + frappe.datetime.str_to_user(o.datum) + '</span>' : '') +
+			'</span>' +
+			'<span class="po-amt">' + fmt(o.umsatz) + '</span>' +
+			'<span class="po-pct"></span>' +
+			'</div>' +
+			'<div class="po-sub-hint">' + frappe.utils.escape_html(o.hinweis) + '</div>';
+	});
+	return html;
+}
+
+function renderSub(data) {
 	var isPm = data.scope === 'pm';
+	var outside = data.ausserhalb || [];
 	var html = '';
+	if (!data.rows.length) {
+		html += '<div class="po-sub-empty">' + frappe.utils.escape_html(renderSubEmptyText(data)) + '</div>';
+	}
 	data.rows.forEach(function (r) {
 		var pct = Math.max(Math.min(r.anteil || 0, 100), 0);
 		if (isPm) {
@@ -425,9 +499,13 @@ function renderSub(data) {
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pct + '%; background:#999"></span></span>' +
 			'</div>';
 	});
+	if (outside.length) html += renderSubOutside(outside);
 	var n = data.rows.filter(function (r) { return !r.ohne_auftrag; }).length;
-	var unit = isPm ? (n === 1 ? 'Projekt' : 'Projekte') : (n === 1 ? 'Auftrag' : 'Aufträge');
-	html += '<div class="po-sub-foot">' + n + ' ' + unit + ' · ' + fmt(data.gesamt) + '</div>';
+	if (n) {
+		var unit = isPm ? (n === 1 ? 'Projekt' : 'Projekte') : (n === 1 ? 'Auftrag' : 'Aufträge');
+		html += '<div class="po-sub-foot">' + n + ' ' + unit + ' · ' + fmt(data.gesamt) +
+			(outside.length ? ' · ' + outside.length + ' außerhalb' : '') + '</div>';
+	}
 	return html;
 }
 
