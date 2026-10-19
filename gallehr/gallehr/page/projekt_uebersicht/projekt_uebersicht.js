@@ -87,9 +87,13 @@ function resolvePeriodRange() {
 }
 
 function getFilters() {
-	var range = resolvePeriodRange();
+	// "Alle offenen Auftraege": kein Zeitraum -- alle nicht abgeschlossenen
+	// Auftraege, egal aus welchem Jahr (Vorschlag S. Gallehr 19.10.2026).
+	var offen = $('#po-periode').val() === 'offen_alle';
+	var range = offen ? { von: '', bis: '' } : resolvePeriodRange();
 	var unternehmen = $('#po-unternehmen').val() || 'Alle';
 	return {
+		modus: offen ? 'offen' : 'zeitraum',
 		von: range.von,
 		bis: range.bis,
 		// Dashboard zeigt bewusst nur offene Projekte -- Rueckmeldung
@@ -163,6 +167,11 @@ function fmtPct(val) {
 // die Zahlen auf dem Screen erzeugt haben -- eine Quelle der Wahrheit,
 // gleiches Prinzip wie buildReportLink() im Finanz Dashboard.
 function buildReportLink(filters) {
+	if (filters.modus === 'offen') {
+		// Sales-Order-Report, gefiltert auf bestaetigte, nicht abgeschlossene Auftraege.
+		return '/app/sales-order/view/report?docstatus=1&status=' +
+			encodeURIComponent(JSON.stringify(['not in', ['Completed', 'Closed', 'Cancelled']]));
+	}
 	var params = [
 		'von=' + encodeURIComponent(filters.von),
 		'bis=' + encodeURIComponent(filters.bis),
@@ -183,19 +192,30 @@ var activeFilters = null;
 
 function loadReport() {
 	var filters = getFilters();
-	if (!filters.von || !filters.bis) return;
+	if (filters.modus !== 'offen' && (!filters.von || !filters.bis)) return;
 	activeFilters = filters;
 
 	$('#po-typ-rows, #po-proj-rows, #po-kunde-rows, #po-pm-rows').html('<div class="po-loading">Laden...</div>');
 
-	frappe.call({
-		method: 'frappe.desk.query_report.run',
-		args: { report_name: 'Projekt Übersicht', filters: filters, ignore_prepared_report: true },
-		callback: function (r) {
-			if (!r.message) return;
-			processReport(r.message.result || [], filters);
-		}
-	});
+	if (filters.modus === 'offen') {
+		frappe.call({
+			method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_offene_auftraege',
+			args: { unternehmen: filters.unternehmen, kennzahl: filters.kennzahl, status: filters.status },
+			callback: function (r) {
+				if (!r.message || activeFilters !== filters) return;
+				processReport(r.message.rows || [], filters, r.message);
+			}
+		});
+	} else {
+		frappe.call({
+			method: 'frappe.desk.query_report.run',
+			args: { report_name: 'Projekt Übersicht', filters: filters, ignore_prepared_report: true },
+			callback: function (r) {
+				if (!r.message) return;
+				processReport(r.message.result || [], filters);
+			}
+		});
+	}
 
 	loadUnassignedProjects(filters.unternehmen);
 }
@@ -227,7 +247,7 @@ function loadUnassignedProjects(unternehmen) {
 	});
 }
 
-function processReport(rows, filters) {
+function processReport(rows, filters, offenInfo) {
 	var byView = { typ: [], projekt: [], kunde: [], pm: [] };
 
 	rows.forEach(function (row) {
@@ -245,8 +265,19 @@ function processReport(rows, filters) {
 
 	var reportLink = buildReportLink(filters);
 	$('#po-hero-total').text(fmt(gesamt));
-	$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert im Zeitraum' : 'Fakturierter Umsatz im Zeitraum');
-	$('#po-hero-meta').text(rows.length ? 'Zeitraum ' + filters.von + ' bis ' + filters.bis : '');
+	if (filters.modus === 'offen') {
+		// Differenz Auftragswert - Fakturiert = was bei offenen Auftraegen noch nicht
+		// in Rechnung gestellt ist (je Auftrag, ohne Gegenrechnung von Ueberfakturierung).
+		$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert aller offenen Aufträge' : 'Fakturiert auf offene Aufträge');
+		$('#po-hero-meta').text(offenInfo ? 'Alle offenen Aufträge, alle Jahre · ' + offenInfo.auftraege + (offenInfo.auftraege === 1 ? ' Auftrag' : ' Aufträge') : '');
+		$('#po-hero-sub').text(offenInfo
+			? 'Auftragswert ' + fmt(offenInfo.auftragswert) + ' · Fakturiert ' + fmt(offenInfo.fakturiert) + ' · Noch nicht fakturiert ' + fmt(offenInfo.nicht_fakturiert)
+			: '');
+	} else {
+		$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert im Zeitraum' : 'Fakturierter Umsatz im Zeitraum');
+		$('#po-hero-meta').text(rows.length ? 'Zeitraum ' + filters.von + ' bis ' + filters.bis : '');
+		$('#po-hero-sub').text('');
+	}
 
 	renderView('typ', byView.typ, '#BA7517', reportLink);
 	renderView('proj', byView.projekt, '#378ADD', reportLink);
@@ -366,7 +397,8 @@ function fetchSub(scope, key) {
 			method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_auftraege',
 			args: {
 				scope: scope, key: key, von: f.von, bis: f.bis, kennzahl: f.kennzahl,
-				status: f.status, unternehmen: f.unternehmen, projektauswahl: f.projektauswahl
+				status: f.status, unternehmen: f.unternehmen, projektauswahl: f.projektauswahl,
+				modus: f.modus
 			},
 			callback: function (r) { resolve(r.message); },
 			error: function () { delete subCache[ck]; reject(); }
@@ -397,6 +429,8 @@ function toggleItem($item) {
 // ein Auftrag mit Liefertermin nach dem Zeitraum zaehlt dort 0 EUR, sah aber aus
 // wie "Auftrag fehlt". Ein Aufruf fuer alle 0-EUR-Zeilen eines Containers.
 function loadNullzeilenBadges($container, rows, filters) {
+	// Im Modus "Alle offenen Auftraege" gibt es keinen Zeitraum, der etwas ausschliessen koennte.
+	if (filters.modus === 'offen') return;
 	var keys = [];
 	rows.forEach(function (row) {
 		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
@@ -425,6 +459,12 @@ function loadNullzeilenBadges($container, rows, filters) {
 }
 
 function renderSubEmptyText(data) {
+	if (data.modus === 'offen') {
+		if (data.kennzahl === 'Fakturiert') {
+			return data.scope === 'pm' ? 'Noch nichts fakturiert' : 'Auf die offenen Aufträge dieses Projekts ist noch nichts fakturiert.';
+		}
+		return data.scope === 'pm' ? 'Keine Projekte mit offenen Aufträgen' : 'Keine offenen Aufträge zu diesem Projekt.';
+	}
 	if (data.scope === 'pm') return 'Keine Projekte im gewählten Zeitraum';
 	var beleg = data.kennzahl === 'Auftragswert' ? 'Auftrag' : 'Rechnung';
 	var artikel = data.kennzahl === 'Auftragswert' ? 'Kein' : 'Keine';
@@ -443,16 +483,21 @@ function renderSubEmptyText(data) {
 
 // Belege, die nicht in die Zahl der Zeile einfliessen (grau, mit Grund) --
 // Summe/Anteil/Footer zaehlen sie bewusst nicht mit.
+// Kleine Referenz hinter dem Positionstext: "AUF-00264 · 13.01.2026" (Link zum Beleg).
+function renderBelegRef(route, name, datum) {
+	return '<span class="po-sub-date"><a href="/app/' + route + '/' + encodeURIComponent(name) + '" target="_blank">' +
+		frappe.utils.escape_html(name) + '</a>' + (datum ? ' · ' + frappe.datetime.str_to_user(datum) : '') + '</span>';
+}
+
 function renderSubOutside(list) {
 	var html = '<div class="po-sub-outhead">Nicht im Zeitraum – zählt nicht mit</div>';
 	list.forEach(function (o) {
 		var route = o.doctype === 'Sales Invoice' ? 'sales-invoice' : 'sales-order';
+		var haupt = o.text || o.name;
 		html += '<div class="po-row po-subrow po-sub-out">' +
 			'<span class="po-rank"></span>' +
-			'<span class="po-name"><span class="po-name-text"><a href="/app/' + route + '/' + encodeURIComponent(o.name) + '" target="_blank">' +
-			frappe.utils.escape_html(o.name) + '</a></span>' +
-			(o.datum ? '<span class="po-sub-date">' + frappe.datetime.str_to_user(o.datum) + '</span>' : '') +
-			'</span>' +
+			'<span class="po-name"><span class="po-name-text" title="' + frappe.utils.escape_html(o.text_voll || haupt) + '">' +
+			frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef(route, o.name, o.datum) + '</span>' +
 			'<span class="po-amt">' + fmt(o.umsatz) + '</span>' +
 			'<span class="po-pct"></span>' +
 			'</div>' +
@@ -486,10 +531,11 @@ function renderSub(data) {
 		if (r.ohne_auftrag) {
 			name = '<span class="po-name-text po-muted">ohne Auftragszuordnung</span>';
 		} else {
-			name = '<span class="po-name-text"><a href="/app/sales-order/' + encodeURIComponent(r.name) + '" target="_blank">' +
-				frappe.utils.escape_html(r.name) + '</a></span>' +
-				(r.datum ? '<span class="po-sub-date">' + frappe.datetime.str_to_user(r.datum) + '</span>' : '') +
-				(r.positionen > 1 ? '<span class="po-sub-date">' + r.positionen + ' Pos.</span>' : '');
+			// Hauptzeile = Positionstext (Beschreibung), damit man auf einen Blick sieht,
+			// was unter dem Projekt steckt; Auftrag + Datum klein dahinter als Link.
+			var haupt = r.text || r.name;
+			name = '<span class="po-name-text" title="' + frappe.utils.escape_html(r.text_voll || haupt) + '">' +
+				frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef('sales-order', r.name, r.datum);
 		}
 		html += '<div class="po-row po-subrow">' +
 			'<span class="po-rank"></span>' +
@@ -500,10 +546,18 @@ function renderSub(data) {
 			'</div>';
 	});
 	if (outside.length) html += renderSubOutside(outside);
-	var n = data.rows.filter(function (r) { return !r.ohne_auftrag; }).length;
-	if (n) {
-		var unit = isPm ? (n === 1 ? 'Projekt' : 'Projekte') : (n === 1 ? 'Auftrag' : 'Aufträge');
-		html += '<div class="po-sub-foot">' + n + ' ' + unit + ' · ' + fmt(data.gesamt) +
+	var echte = data.rows.filter(function (r) { return !r.ohne_auftrag; });
+	if (echte.length) {
+		var teile;
+		if (isPm) {
+			teile = echte.length + (echte.length === 1 ? ' Projekt' : ' Projekte');
+		} else {
+			var auftraege = {};
+			echte.forEach(function (r) { auftraege[r.name] = true; });
+			var na = Object.keys(auftraege).length;
+			teile = na + (na === 1 ? ' Auftrag' : ' Aufträge') + ' · ' + echte.length + (echte.length === 1 ? ' Position' : ' Positionen');
+		}
+		html += '<div class="po-sub-foot">' + teile + ' · ' + fmt(data.gesamt) +
 			(outside.length ? ' · ' + outside.length + ' außerhalb' : '') + '</div>';
 	}
 	return html;
