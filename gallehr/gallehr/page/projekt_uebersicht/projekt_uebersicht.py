@@ -15,7 +15,8 @@ Zeilen sind einzelne Positionen mit ihrem Beschreibungstext (nicht nur die
 Auftragsnummer), damit man auf einen Blick sieht, was unter dem Projekt steckt.
 
 Zweiter Modus "offen" (Zeitraum-Option "Alle offenen Auftraege"): alle noch
-nicht abgeschlossenen Auftraege, egal aus welchem Jahr. Auftragswert = voller
+nicht abgeschlossenen und noch nicht voll abgerechneten Auftraege, egal aus
+welchem Jahr. Auftragswert = voller
 Wert der Positionen, Fakturiert = was ueber Rechnungspositionen schon in
 Rechnung gestellt ist (Zuordnung ueber das Feld sales_order).
 """
@@ -429,8 +430,13 @@ def _projekte_je_pm(pm, von, bis, kennzahl, status, unternehmen, projektauswahl)
 def _offene_daten(status, unternehmen, pm=None, projekt=None):
 	"""Positionen aller offenen Auftraege (jedes Jahr) samt zugeordneter Rechnungspositionen.
 
-	offen = bestaetigter Auftrag, Status nicht Completed/Closed/Cancelled, kein
-	Zombie-Tag, Projekt gemaess Statusfilter (Seite: Offen) und Unternehmen.
+	offen = bestaetigter Auftrag, Status nicht Completed/Closed/Cancelled, noch
+	nicht vollstaendig abgerechnet (per_billed < 100), kein Zombie-Tag, Projekt
+	gemaess Statusfilter (Seite: Offen) und Unternehmen. Hintergrund zu per_billed:
+	Live-Check 19.10.2026 -- voll abgerechnete Dienstleistungsauftraege bleiben in
+	ERPNext auf "To Deliver" stehen (8 Auftraege in 8 Projekten, 222.000 EUR) und
+	wuerden den Auftragswert aufblaehen; Gallehr schliesst sie nicht zuverlaessig
+	per Status "Closed".
 	Auftragswert je Auftrag = Summe der Positionen, Fakturiert je Auftrag = Summe
 	der Rechnungspositionen mit sales_order = dieser Auftrag (bestaetigte Rechnung,
 	kein Zombie-Tag). Rechnungen ohne Auftragsbezug kommen hier bewusst nicht vor."""
@@ -463,6 +469,7 @@ def _offene_daten(status, unternehmen, pm=None, projekt=None):
 		"LEFT JOIN `tabCustomer` c ON c.name = p.customer "
 		"LEFT JOIN `tabUser` u ON u.name = " + PM_KEY + " "
 		"WHERE so.docstatus = 1 AND IFNULL(so.status, '') NOT IN %(zu)s "
+		"AND IFNULL(so.per_billed, 0) < 100 "
 		"AND so.name NOT IN ("
 		"  SELECT document_name FROM `tabTag Link`"
 		"  WHERE document_type = 'Sales Order' AND tag = 'Zombie'"
