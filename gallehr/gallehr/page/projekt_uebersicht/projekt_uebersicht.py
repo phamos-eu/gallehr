@@ -78,6 +78,20 @@ def _position_row(r):
 	return _zeile(r.name, r.datum, r.umsatz, r.item_name, r.beschreibung)
 
 
+def _auftragsnamen(eintraege):
+	"""Setzt je Eintrag mit Sales-Order-Name den Auftragsnamen (Sales Order title)."""
+	namen = list({e["name"] for e in eintraege if e.get("name") and e.get("doctype", "Sales Order") == "Sales Order"})
+	if not namen:
+		return
+	titel = {r.name: r.title for r in frappe.get_all("Sales Order", filters={"name": ["in", namen]}, fields=["name", "title"])}
+	for e in eintraege:
+		if e.get("name") in titel and e.get("doctype", "Sales Order") == "Sales Order":
+			t = (titel[e["name"]] or "").strip()
+			# ERPNext-Standardtitel "{customer_name}" bleibt ohne Client-Skript unaufgeloest stehen
+			if t and not re.fullmatch(r"\{\w+\}", t):
+				e["auftragsname"] = t
+
+
 def grund_fuer_position(docstatus, zombie, datum, von, bis):
 	"""Warum zaehlt ein Beleg bzw. eine Position NICHT in den Zeitraum? None = zaehlt.
 
@@ -290,6 +304,8 @@ def get_auftraege(scope, key, von="", bis="", kennzahl="Auftragswert", status="O
 	else:
 		rows = _projekte_je_pm(key, von, bis, kennzahl, status, unternehmen, projektauswahl)
 
+	if scope == "projekt":
+		_auftragsnamen(rows)
 	gesamt = sum(r["umsatz"] for r in rows)
 	for r in rows:
 		r["anteil"] = (r["umsatz"] / gesamt * 100.0) if gesamt else 0.0
@@ -299,6 +315,7 @@ def get_auftraege(scope, key, von="", bis="", kennzahl="Auftragswert", status="O
 		# Alles, was NICHT in gesamt einfliesst, inkl. Grund -- gesamt/anteil bleiben
 		# davon unberuehrt (siehe _ausserhalb).
 		result["ausserhalb"] = _ausserhalb([key], von, bis, kennzahl)[key]
+		_auftragsnamen(result["ausserhalb"])
 		result["laufzeit"] = _laufzeit(key, von, bis)
 	return result
 
