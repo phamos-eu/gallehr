@@ -535,7 +535,8 @@ function renderSub(data) {
 			// im Tooltip; Auftrag + Datum klein dahinter als Link.
 			var haupt = r.auftragsname || r.text || r.name;
 			name = '<span class="po-name-text" title="' + frappe.utils.escape_html(r.text_voll || haupt) + '">' +
-				frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef('sales-order', r.name, r.datum);
+				frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef('sales-order', r.name, r.datum) +
+				(r.positionen > 1 ? '<span class="po-sub-date" title="Mehrere Positionen dieses Auftrags, summiert. Der Link führt zum Auftrag mit den Positionen.">· ' + r.positionen + ' Positionen summiert</span>' : '');
 		}
 		html += '<div class="po-row po-subrow">' +
 			'<span class="po-rank"></span>' +
@@ -552,10 +553,9 @@ function renderSub(data) {
 		if (isPm) {
 			teile = echte.length + (echte.length === 1 ? ' Projekt' : ' Projekte');
 		} else {
-			var auftraege = {};
-			echte.forEach(function (r) { auftraege[r.name] = true; });
-			var na = Object.keys(auftraege).length;
-			teile = na + (na === 1 ? ' Auftrag' : ' Aufträge') + ' · ' + echte.length + (echte.length === 1 ? ' Position' : ' Positionen');
+			var na = echte.length;
+			var np = echte.reduce(function (n, r) { return n + (r.positionen || 1); }, 0);
+			teile = na + (na === 1 ? ' Auftrag' : ' Aufträge') + ' · ' + np + (np === 1 ? ' Position' : ' Positionen');
 		}
 		html += '<div class="po-sub-foot">' + teile + ' · ' + fmt(data.gesamt) +
 			(outside.length ? ' · ' + outside.length + ' außerhalb' : '') + '</div>';

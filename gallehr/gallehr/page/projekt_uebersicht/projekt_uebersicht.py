@@ -26,7 +26,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import flt, formatdate
+from frappe.utils import flt, fmt_money, formatdate
 
 ABGESCHLOSSEN_STATUS = ("Completed", "Cancelled")
 
@@ -76,6 +76,34 @@ def _zeile(name, datum, betrag, item_name, beschreibung):
 
 def _position_row(r):
 	return _zeile(r.name, r.datum, r.umsatz, r.item_name, r.beschreibung)
+
+
+def _je_auftrag(rows):
+	"""Fasst die Positionszeilen eines Auftrags zu einer Zeile zusammen.
+
+	Summe = Summe der Positionen, die in der Zeile zaehlen (die Projektsumme aendert sich
+	nicht). 'positionen' = Anzahl, der Tooltip (text_voll) listet sie einzeln auf."""
+	je_auftrag, out = {}, []
+	for r in rows:
+		if r.get("ohne_auftrag") or not r.get("name"):
+			out.append(r)
+			continue
+		e = je_auftrag.get(r["name"])
+		if e is None:
+			e = je_auftrag[r["name"]] = dict(r, positionen=0, _teile=[])
+			out.append(e)
+		else:
+			e["umsatz"] += r["umsatz"]
+		e["positionen"] += 1
+		e["_teile"].append((r["text"], r["text_voll"], r["umsatz"]))
+	for e in je_auftrag.values():
+		teile = e.pop("_teile")
+		if len(teile) > 1:
+			e["text"] = teile[0][0] + " (+" + str(len(teile) - 1) + " weitere)"
+			e["text_voll"] = "\n".join(
+				(t[0] or "–") + " · " + fmt_money(t[2], currency="EUR") for t in teile
+			)[:600]
+	return out
 
 
 def _auftragsnamen(eintraege):
@@ -309,6 +337,7 @@ def get_auftraege(scope, key, von="", bis="", kennzahl="Auftragswert", status="O
 		rows = _projekte_je_pm(key, von, bis, kennzahl, status, unternehmen, projektauswahl)
 
 	if scope == "projekt":
+		rows = _je_auftrag(rows)
 		_auftragsnamen(rows)
 	gesamt = sum(r["umsatz"] for r in rows)
 	for r in rows:

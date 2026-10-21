@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 
 from gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht import (
+	_je_auftrag,
 	grund_fuer_position,
 	positionstext,
 	positionstext_voll,
@@ -59,3 +60,22 @@ class TestPositionstext(unittest.TestCase):
 
 	def test_nichts_vorhanden(self):
 		self.assertEqual(positionstext(None, None), "")
+
+
+class TestJeAuftrag(unittest.TestCase):
+	def test_positionen_eines_auftrags_werden_summiert(self):
+		rows = [
+			{"name": "AUF-1", "datum": "2026-06-17", "umsatz": 41750.0, "text": "A", "text_voll": "A"},
+			{"name": "AUF-1", "datum": "2026-06-17", "umsatz": 3750.0, "text": "B", "text_voll": "B"},
+			{"name": "AUF-2", "datum": "2026-06-18", "umsatz": 100.0, "text": "C", "text_voll": "C"},
+			{"name": "", "umsatz": 5.0, "ohne_auftrag": 1, "text": "", "text_voll": ""},
+		]
+		out = _je_auftrag(rows)
+		self.assertEqual([r["name"] for r in out], ["AUF-1", "AUF-2", ""])
+		self.assertEqual(out[0]["umsatz"], 45500.0)
+		self.assertEqual(out[0]["positionen"], 2)
+		self.assertEqual(out[0]["text"], "A (+1 weitere)")
+		self.assertEqual(out[1]["positionen"], 1)
+		self.assertEqual(out[1]["text"], "C")
+		self.assertEqual(sum(r["umsatz"] for r in out), sum(r["umsatz"] for r in rows))
+		self.assertEqual(rows[0]["umsatz"], 41750.0)  # Eingabe bleibt unveraendert
