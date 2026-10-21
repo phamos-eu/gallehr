@@ -79,11 +79,15 @@ def _position_row(r):
 
 
 def _auftragsnamen(eintraege):
-	"""Setzt je Eintrag mit Sales-Order-Name den Auftragsnamen (Sales Order title)."""
+	"""Setzt je Eintrag mit Sales-Order-Name den Auftragsnamen.
+
+	Auftragsname = das Titelfeld des Sales Order (so, wie es die Auftragsliste und
+	die Kopfzeile des Belegs zeigen); die Instanz stellt es per Customize Form ein."""
 	namen = list({e["name"] for e in eintraege if e.get("name") and e.get("doctype", "Sales Order") == "Sales Order"})
 	if not namen:
 		return
-	titel = {r.name: r.title for r in frappe.get_all("Sales Order", filters={"name": ["in", namen]}, fields=["name", "title"])}
+	feld = frappe.get_meta("Sales Order").title_field or "title"
+	titel = {r.name: r.get(feld) for r in frappe.get_all("Sales Order", filters={"name": ["in", namen]}, fields=["name", feld])}
 	for e in eintraege:
 		if e.get("name") in titel and e.get("doctype", "Sales Order") == "Sales Order":
 			t = (titel[e["name"]] or "").strip()
