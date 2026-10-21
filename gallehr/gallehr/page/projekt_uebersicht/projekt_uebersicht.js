@@ -493,7 +493,7 @@ function renderSubOutside(list) {
 	var html = '<div class="po-sub-outhead">Nicht im Zeitraum – zählt nicht mit</div>';
 	list.forEach(function (o) {
 		var route = o.doctype === 'Sales Invoice' ? 'sales-invoice' : 'sales-order';
-		var haupt = o.text || o.name;
+		var haupt = o.auftragsname || o.text || o.name;
 		html += '<div class="po-row po-subrow po-sub-out">' +
 			'<span class="po-rank"></span>' +
 			'<span class="po-name"><span class="po-name-text" title="' + frappe.utils.escape_html(o.text_voll || haupt) + '">' +
@@ -531,9 +531,9 @@ function renderSub(data) {
 		if (r.ohne_auftrag) {
 			name = '<span class="po-name-text po-muted">ohne Auftragszuordnung</span>';
 		} else {
-			// Hauptzeile = Positionstext (Beschreibung), damit man auf einen Blick sieht,
-			// was unter dem Projekt steckt; Auftrag + Datum klein dahinter als Link.
-			var haupt = r.text || r.name;
+			// Hauptzeile = Auftragsname (wie in der Auftragsliste), der Positionstext steht
+			// im Tooltip; Auftrag + Datum klein dahinter als Link.
+			var haupt = r.auftragsname || r.text || r.name;
 			name = '<span class="po-name-text" title="' + frappe.utils.escape_html(r.text_voll || haupt) + '">' +
 				frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef('sales-order', r.name, r.datum);
 		}
