@@ -483,7 +483,7 @@ function renderSubEmptyText(data) {
 
 // Belege, die nicht in die Zahl der Zeile einfliessen (grau, mit Grund) --
 // Summe/Anteil/Footer zaehlen sie bewusst nicht mit.
-// Kleine Referenz hinter dem Positionstext: "AUF-00264 · 13.01.2026" (Link zum Beleg).
+// Kleine Referenz hinter dem Namen: "AUF-00264 · 13.01.2026" (Link zum Beleg).
 function renderBelegRef(route, name, datum) {
 	return '<span class="po-sub-date"><a href="/app/' + route + '/' + encodeURIComponent(name) + '" target="_blank">' +
 		frappe.utils.escape_html(name) + '</a>' + (datum ? ' · ' + frappe.datetime.str_to_user(datum) : '') + '</span>';
