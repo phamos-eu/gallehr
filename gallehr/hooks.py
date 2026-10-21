@@ -42,7 +42,12 @@ doc_events = {
         "on_submit": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
         "on_update_after_submit": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
         "on_cancel": "gallehr.gallehr.bank_zuordnung.bei_aenderung",
-    }
+    },
+    "Leave Application": {
+        "on_submit": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
+        "on_update_after_submit": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
+        "on_cancel": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
+    },
 }
 
 scheduler_events = {
