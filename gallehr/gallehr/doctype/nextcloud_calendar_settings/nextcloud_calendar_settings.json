@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "creation": "2026-10-21 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "connection_section",
+  "enabled",
+  "server_url",
+  "username",
+  "app_password",
+  "connection_column_break",
+  "calendar_name",
+  "employee_filter",
+  "test_connection"
+ ],
+ "fields": [
+  {
+   "fieldname": "connection_section",
+   "fieldtype": "Section Break",
+   "label": "Leave Calendar Sync"
+  },
+  {
+   "default": "0",
+   "description": "When on, every approved and submitted Leave Application is written to the Nextcloud calendar below, and removed again when it is cancelled or rejected.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "description": "Nextcloud base URL including its path, e.g. https://x32.id4net.de/nextcloud",
+   "fieldname": "server_url",
+   "fieldtype": "Data",
+   "label": "Nextcloud URL",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "description": "Nextcloud account that owns the calendar, e.g. erpnext.bot",
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Bot Username",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "description": "An app password of the bot account (Nextcloud: Personal settings > Security > Devices & sessions), not its login password.",
+   "fieldname": "app_password",
+   "fieldtype": "Password",
+   "label": "App Password",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "connection_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Display name of the target calendar, exactly as shown in Nextcloud, e.g. Ulrich & Friends",
+   "fieldname": "calendar_name",
+   "fieldtype": "Data",
+   "label": "Calendar Name",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "description": "Only sync leave of employees whose name contains this text (e.g. Test while testing). Leave empty to sync everyone.",
+   "fieldname": "employee_filter",
+   "fieldtype": "Data",
+   "label": "Only Employees Containing"
+  },
+  {
+   "description": "Checks the saved settings: logs in as the bot and lists the calendars it can see.",
+   "fieldname": "test_connection",
+   "fieldtype": "Button",
+   "label": "Test Connection"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gallehr",
+ "name": "Nextcloud Calendar Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
