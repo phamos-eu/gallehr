@@ -338,3 +338,16 @@
 .po-muted { color: var(--text-muted); font-style: italic; }
 .po-sub-loading { padding: 6px; font-size: 11px; color: var(--text-muted); }
 .po-sub-foot { padding: 3px 6px 4px; font-size: 10.5px; color: var(--text-muted); text-align: right; }
+
+/* Belege ausserhalb des Zeitraums (grau, zaehlen nicht mit) */
+.po-sub-empty { padding: 6px; font-size: 11.5px; color: var(--text-color); }
+.po-sub-outhead { padding: 6px 6px 2px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.po-subrow.po-sub-out { grid-template-rows: auto; opacity: 0.75; }
+.po-sub-out .po-amt { color: var(--text-muted); font-weight: 400; }
+.po-sub-hint { padding: 0 6px 4px 32px; font-size: 10.5px; color: var(--text-muted); font-style: italic; }
+
+/* Positionstext + Referenz, Kopfzeile "Alle offenen Auftraege" */
+.po-sub-date { flex-shrink: 0; }
+.po-sub-date a { color: inherit; }
+.po-sub-date a:hover { text-decoration: underline; }
+.po-hero-sub { margin-top: 4px; font-size: 12px; color: var(--text-muted); }

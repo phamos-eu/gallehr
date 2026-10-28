@@ -87,9 +87,13 @@ function resolvePeriodRange() {
 }
 
 function getFilters() {
-	var range = resolvePeriodRange();
+	// "Alle offenen Auftraege": kein Zeitraum -- alle nicht abgeschlossenen
+	// Auftraege, egal aus welchem Jahr (Vorschlag S. Gallehr 19.10.2026).
+	var offen = $('#po-periode').val() === 'offen_alle';
+	var range = offen ? { von: '', bis: '' } : resolvePeriodRange();
 	var unternehmen = $('#po-unternehmen').val() || 'Alle';
 	return {
+		modus: offen ? 'offen' : 'zeitraum',
 		von: range.von,
 		bis: range.bis,
 		// Dashboard zeigt bewusst nur offene Projekte -- Rueckmeldung
@@ -163,6 +167,11 @@ function fmtPct(val) {
 // die Zahlen auf dem Screen erzeugt haben -- eine Quelle der Wahrheit,
 // gleiches Prinzip wie buildReportLink() im Finanz Dashboard.
 function buildReportLink(filters) {
+	if (filters.modus === 'offen') {
+		// Sales-Order-Report, gefiltert auf bestaetigte, nicht abgeschlossene Auftraege.
+		return '/app/sales-order/view/report?docstatus=1&status=' +
+			encodeURIComponent(JSON.stringify(['not in', ['Completed', 'Closed', 'Cancelled']]));
+	}
 	var params = [
 		'von=' + encodeURIComponent(filters.von),
 		'bis=' + encodeURIComponent(filters.bis),
@@ -183,19 +192,30 @@ var activeFilters = null;
 
 function loadReport() {
 	var filters = getFilters();
-	if (!filters.von || !filters.bis) return;
+	if (filters.modus !== 'offen' && (!filters.von || !filters.bis)) return;
 	activeFilters = filters;
 
 	$('#po-typ-rows, #po-proj-rows, #po-kunde-rows, #po-pm-rows').html('<div class="po-loading">Laden...</div>');
 
-	frappe.call({
-		method: 'frappe.desk.query_report.run',
-		args: { report_name: 'Projekt Übersicht', filters: filters, ignore_prepared_report: true },
-		callback: function (r) {
-			if (!r.message) return;
-			processReport(r.message.result || [], filters);
-		}
-	});
+	if (filters.modus === 'offen') {
+		frappe.call({
+			method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_offene_auftraege',
+			args: { unternehmen: filters.unternehmen, kennzahl: filters.kennzahl, status: filters.status },
+			callback: function (r) {
+				if (!r.message || activeFilters !== filters) return;
+				processReport(r.message.rows || [], filters, r.message);
+			}
+		});
+	} else {
+		frappe.call({
+			method: 'frappe.desk.query_report.run',
+			args: { report_name: 'Projekt Übersicht', filters: filters, ignore_prepared_report: true },
+			callback: function (r) {
+				if (!r.message) return;
+				processReport(r.message.result || [], filters);
+			}
+		});
+	}
 
 	loadUnassignedProjects(filters.unternehmen);
 }
@@ -227,7 +247,7 @@ function loadUnassignedProjects(unternehmen) {
 	});
 }
 
-function processReport(rows, filters) {
+function processReport(rows, filters, offenInfo) {
 	var byView = { typ: [], projekt: [], kunde: [], pm: [] };
 
 	rows.forEach(function (row) {
@@ -245,13 +265,27 @@ function processReport(rows, filters) {
 
 	var reportLink = buildReportLink(filters);
 	$('#po-hero-total').text(fmt(gesamt));
-	$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert im Zeitraum' : 'Fakturierter Umsatz im Zeitraum');
-	$('#po-hero-meta').text(rows.length ? 'Zeitraum ' + filters.von + ' bis ' + filters.bis : '');
+	if (filters.modus === 'offen') {
+		// Differenz Auftragswert - Fakturiert = was bei offenen Auftraegen noch nicht
+		// in Rechnung gestellt ist (je Auftrag, ohne Gegenrechnung von Ueberfakturierung).
+		$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert aller offenen Aufträge' : 'Fakturiert auf offene Aufträge');
+		$('#po-hero-meta').text(offenInfo ? 'Alle offenen Aufträge, alle Jahre · ' + offenInfo.auftraege + (offenInfo.auftraege === 1 ? ' Auftrag' : ' Aufträge') : '');
+		$('#po-hero-sub').text(offenInfo
+			? 'Auftragswert ' + fmt(offenInfo.auftragswert) + ' · Fakturiert ' + fmt(offenInfo.fakturiert) + ' · Noch nicht fakturiert ' + fmt(offenInfo.nicht_fakturiert)
+			: '');
+	} else {
+		$('#po-hero-label').text(filters.kennzahl === 'Auftragswert' ? 'Auftragswert im Zeitraum' : 'Fakturierter Umsatz im Zeitraum');
+		$('#po-hero-meta').text(rows.length ? 'Zeitraum ' + filters.von + ' bis ' + filters.bis : '');
+		$('#po-hero-sub').text('');
+	}
 
 	renderView('typ', byView.typ, '#BA7517', reportLink);
 	renderView('proj', byView.projekt, '#378ADD', reportLink);
 	renderView('kunde', byView.kunde, '#639922', reportLink);
 	renderView('pm', byView.pm, '#534AB7', reportLink);
+
+	// 0-EUR-Projekte erklaeren (Beleg ausserhalb Zeitraum / nur Projektlaufzeit ...)
+	loadNullzeilenBadges($('#po-proj-rows'), byView.projekt, filters);
 }
 
 function renderView(prefix, rowsForView, color, reportLink) {
@@ -363,7 +397,8 @@ function fetchSub(scope, key) {
 			method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_auftraege',
 			args: {
 				scope: scope, key: key, von: f.von, bis: f.bis, kennzahl: f.kennzahl,
-				status: f.status, unternehmen: f.unternehmen, projektauswahl: f.projektauswahl
+				status: f.status, unternehmen: f.unternehmen, projektauswahl: f.projektauswahl,
+				modus: f.modus
 			},
 			callback: function (r) { resolve(r.message); },
 			error: function () { delete subCache[ck]; reject(); }
@@ -383,17 +418,101 @@ function toggleItem($item) {
 	fetchSub($item.data('scope'), $item.data('key')).then(function (data) {
 		$item.data('loaded', true);
 		$sub.html(renderSub(data));
+		if (data.scope === 'pm') loadNullzeilenBadges($sub, data.rows, activeFilters);
 	}, function () {
 		$sub.html('<div class="po-sub-loading">Fehler beim Laden</div>');
 	});
 }
 
-function renderSub(data) {
-	if (!data.rows.length) {
-		return '<div class="po-sub-loading">Keine Aufträge im gewählten Zeitraum</div>';
+// Badge fuer Zeilen mit 0 EUR: warum steht das Projekt hier, obwohl nichts
+// zaehlt? Rueckmeldung Tester 16.10.2026 ("Auftraege nicht gescheit gezogen"):
+// ein Auftrag mit Liefertermin nach dem Zeitraum zaehlt dort 0 EUR, sah aber aus
+// wie "Auftrag fehlt". Ein Aufruf fuer alle 0-EUR-Zeilen eines Containers.
+function loadNullzeilenBadges($container, rows, filters) {
+	// Im Modus "Alle offenen Auftraege" gibt es keinen Zeitraum, der etwas ausschliessen koennte.
+	if (filters.modus === 'offen') return;
+	var keys = [];
+	rows.forEach(function (row) {
+		var umsatz = row.umsatz !== undefined ? row.umsatz : row[2];
+		var key = row.key !== undefined ? row.key : row[4];
+		if (key && !umsatz) keys.push(key);
+	});
+	if (!keys.length) return;
+
+	frappe.call({
+		method: 'gallehr.gallehr.page.projekt_uebersicht.projekt_uebersicht.get_nullzeilen_hinweise',
+		args: { keys: keys, von: filters.von, bis: filters.bis, kennzahl: filters.kennzahl },
+		callback: function (r) {
+			// Filter zwischenzeitlich gewechselt -> Antwort gehoert zu alten Zeilen.
+			if (activeFilters !== filters) return;
+			var hints = r.message || {};
+			$container.find('.po-expandable').each(function () {
+				var h = hints[$(this).attr('data-key')];
+				if (!h) return;
+				$(this).children('.po-row').find('.po-name').append(
+					'<span class="po-noorder-badge" title="' + frappe.utils.escape_html(h.title) + '">' +
+					frappe.utils.escape_html(h.text) + '</span>'
+				);
+			});
+		}
+	});
+}
+
+function renderSubEmptyText(data) {
+	if (data.modus === 'offen') {
+		if (data.kennzahl === 'Fakturiert') {
+			return data.scope === 'pm' ? 'Noch nichts fakturiert' : 'Auf die offenen Aufträge dieses Projekts ist noch nichts fakturiert.';
+		}
+		return data.scope === 'pm' ? 'Keine Projekte mit offenen Aufträgen' : 'Keine offenen Aufträge zu diesem Projekt.';
 	}
+	if (data.scope === 'pm') return 'Keine Projekte im gewählten Zeitraum';
+	var beleg = data.kennzahl === 'Auftragswert' ? 'Auftrag' : 'Rechnung';
+	var artikel = data.kennzahl === 'Auftragswert' ? 'Kein' : 'Keine';
+	if ((data.ausserhalb || []).length) {
+		return artikel + ' ' + beleg + ' zählt im gewählten Zeitraum.';
+	}
+	var text = artikel + ' ' + beleg + ' am Projekt hinterlegt.';
+	var lz = data.laufzeit || {};
+	if (lz.im_zeitraum) {
+		text += ' Im Zeitraum nur wegen der geplanten Projektlaufzeit (Start ' +
+			(lz.start ? frappe.datetime.str_to_user(lz.start) : '–') + ' · Ende ' +
+			(lz.ende ? frappe.datetime.str_to_user(lz.ende) : '–') + ').';
+	}
+	return text;
+}
+
+// Belege, die nicht in die Zahl der Zeile einfliessen (grau, mit Grund) --
+// Summe/Anteil/Footer zaehlen sie bewusst nicht mit.
+// Kleine Referenz hinter dem Namen: "AUF-00264 · 13.01.2026" (Link zum Beleg).
+function renderBelegRef(route, name, datum) {
+	return '<span class="po-sub-date"><a href="/app/' + route + '/' + encodeURIComponent(name) + '" target="_blank">' +
+		frappe.utils.escape_html(name) + '</a>' + (datum ? ' · ' + frappe.datetime.str_to_user(datum) : '') + '</span>';
+}
+
+function renderSubOutside(list) {
+	var html = '<div class="po-sub-outhead">Nicht im Zeitraum – zählt nicht mit</div>';
+	list.forEach(function (o) {
+		var route = o.doctype === 'Sales Invoice' ? 'sales-invoice' : 'sales-order';
+		var haupt = o.auftragsname || o.text || o.name;
+		html += '<div class="po-row po-subrow po-sub-out">' +
+			'<span class="po-rank"></span>' +
+			'<span class="po-name"><span class="po-name-text" title="' + frappe.utils.escape_html(o.text_voll || haupt) + '">' +
+			frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef(route, o.name, o.datum) + '</span>' +
+			'<span class="po-amt">' + fmt(o.umsatz) + '</span>' +
+			'<span class="po-pct"></span>' +
+			'</div>' +
+			'<div class="po-sub-hint">' + frappe.utils.escape_html(o.hinweis) + '</div>';
+	});
+	return html;
+}
+
+function renderSub(data) {
 	var isPm = data.scope === 'pm';
+	var outside = data.ausserhalb || [];
 	var html = '';
+	if (!data.rows.length) {
+		html += '<div class="po-sub-empty">' + frappe.utils.escape_html(renderSubEmptyText(data)) + '</div>';
+	}
 	data.rows.forEach(function (r) {
 		var pct = Math.max(Math.min(r.anteil || 0, 100), 0);
 		if (isPm) {
@@ -412,10 +531,12 @@ function renderSub(data) {
 		if (r.ohne_auftrag) {
 			name = '<span class="po-name-text po-muted">ohne Auftragszuordnung</span>';
 		} else {
-			name = '<span class="po-name-text"><a href="/app/sales-order/' + encodeURIComponent(r.name) + '" target="_blank">' +
-				frappe.utils.escape_html(r.name) + '</a></span>' +
-				(r.datum ? '<span class="po-sub-date">' + frappe.datetime.str_to_user(r.datum) + '</span>' : '') +
-				(r.positionen > 1 ? '<span class="po-sub-date">' + r.positionen + ' Pos.</span>' : '');
+			// Hauptzeile = Auftragsname (wie in der Auftragsliste), der Positionstext steht
+			// im Tooltip; Auftrag + Datum klein dahinter als Link.
+			var haupt = r.auftragsname || r.text || r.name;
+			name = '<span class="po-name-text" title="' + frappe.utils.escape_html(r.text_voll || haupt) + '">' +
+				frappe.utils.escape_html(haupt) + '</span>' + renderBelegRef('sales-order', r.name, r.datum) +
+				(r.positionen > 1 ? '<span class="po-sub-date" title="Mehrere Positionen dieses Auftrags, summiert. Der Link führt zum Auftrag mit den Positionen.">· ' + r.positionen + ' Positionen summiert</span>' : '');
 		}
 		html += '<div class="po-row po-subrow">' +
 			'<span class="po-rank"></span>' +
@@ -425,9 +546,20 @@ function renderSub(data) {
 			'<span class="po-bar-track"><span class="po-bar-fill" style="width:' + pct + '%; background:#999"></span></span>' +
 			'</div>';
 	});
-	var n = data.rows.filter(function (r) { return !r.ohne_auftrag; }).length;
-	var unit = isPm ? (n === 1 ? 'Projekt' : 'Projekte') : (n === 1 ? 'Auftrag' : 'Aufträge');
-	html += '<div class="po-sub-foot">' + n + ' ' + unit + ' · ' + fmt(data.gesamt) + '</div>';
+	if (outside.length) html += renderSubOutside(outside);
+	var echte = data.rows.filter(function (r) { return !r.ohne_auftrag; });
+	if (echte.length) {
+		var teile;
+		if (isPm) {
+			teile = echte.length + (echte.length === 1 ? ' Projekt' : ' Projekte');
+		} else {
+			var na = echte.length;
+			var np = echte.reduce(function (n, r) { return n + (r.positionen || 1); }, 0);
+			teile = na + (na === 1 ? ' Auftrag' : ' Aufträge') + ' · ' + np + (np === 1 ? ' Position' : ' Positionen');
+		}
+		html += '<div class="po-sub-foot">' + teile + ' · ' + fmt(data.gesamt) +
+			(outside.length ? ' · ' + outside.length + ' außerhalb' : '') + '</div>';
+	}
 	return html;
 }
 
