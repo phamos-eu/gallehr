@@ -291,6 +291,11 @@ def get_data(filters, columns):
 	tage_ohne = current_liq_brutto / avg_aus_tag_brutto_final if avg_aus_tag_brutto_final else 0
 	monate_ohne = tage_ohne / 30
 
+	# Outstanding wird am Stichtag (31.12. des gewaehlten Jahres) geteilt: "bis Stichtag"
+	# (inkl. Ueberfaelligem aus Vorjahren) gegen "Folgejahre". Beide zusammen ergeben genau
+	# die bisherige Gesamtzahl. Die Regel steht identisch im Outstanding Report, aus dem die
+	# Karte liest; verify_outstanding_match.py prueft, dass beide uebereinstimmen.
+	stichtag = current_year + "-12-31"
 	outstanding_result = frappe.db.sql(
 		"SELECT"
 		" IFNULL((SELECT SUM(so.net_total - IFNULL("
@@ -308,9 +313,37 @@ def get_data(filters, columns):
 		" WHERE si.docstatus = 1 AND si.outstanding_amount > 0"
 		" AND si.name NOT IN (SELECT document_name FROM `tabTag Link`"
 		"  WHERE document_type = 'Sales Invoice' AND tag = 'Zombie')), 0)"
-		" AS total_outstanding",
+		" AS total_outstanding,"
+		# Anteil nach dem Stichtag: je Auftrag die Positionen mit spaeterem Liefertermin
+		# (offener Rest = net_amount - billed_amt), gedeckelt auf den offenen Auftragsrest,
+		# damit "bis" + "nach" exakt die Gesamtzahl ergibt.
+		" IFNULL((SELECT SUM(GREATEST(0, LEAST("
+		"  so.net_total - IFNULL("
+		"   (SELECT SUM(si_item.net_amount) FROM `tabSales Invoice Item` si_item"
+		"    JOIN `tabSales Invoice` si ON si.name = si_item.parent"
+		"    WHERE si_item.sales_order = so.name AND si.docstatus = 1), 0),"
+		"  IFNULL((SELECT SUM(GREATEST(0, soi.net_amount - IFNULL(soi.billed_amt, 0)))"
+		"   FROM `tabSales Order Item` soi WHERE soi.parent = so.name"
+		"   AND COALESCE(soi.delivery_date, so.delivery_date, so.transaction_date) > %(stichtag)s), 0))))"
+		" FROM `tabSales Order` so"
+		" WHERE so.docstatus = 1"
+		" AND so.status NOT IN ('Completed', 'Cancelled', 'Closed')"
+		" AND so.per_billed < 100"
+		" AND so.name NOT IN (SELECT document_name FROM `tabTag Link`"
+		"  WHERE document_type = 'Sales Order' AND tag = 'Zombie')), 0)"
+		" + IFNULL((SELECT SUM(CASE WHEN si.due_date > %(stichtag)s"
+		"  THEN si.outstanding_amount / 1.19 ELSE 0 END)"
+		" FROM `tabSales Invoice` si"
+		" WHERE si.docstatus = 1 AND si.outstanding_amount > 0"
+		" AND si.name NOT IN (SELECT document_name FROM `tabTag Link`"
+		"  WHERE document_type = 'Sales Invoice' AND tag = 'Zombie')), 0)"
+		" AS outstanding_spaeter",
+		{"stichtag": stichtag},
 		as_dict=True)
 	outstanding = float(outstanding_result[0].get("total_outstanding") or 0) if outstanding_result else 0
+	outstanding_spaeter = float(outstanding_result[0].get("outstanding_spaeter") or 0) if outstanding_result else 0
+	# Nur das, was bis zum Stichtag eingeht, steht dem einjaehrigen Soll gegenueber.
+	outstanding_jahr = outstanding - outstanding_spaeter
 
 	angebote_result = frappe.db.sql(
 		"SELECT IFNULL(SUM(net_total), 0) AS total FROM `tabQuotation`"
@@ -319,9 +352,9 @@ def get_data(filters, columns):
 	liegende_angebote = float(angebote_result[0].get("total") or 0) if angebote_result else 0
 
 	angebots_anteil = liegende_angebote * (angebotsumwandlung / 100)
-	absehbarer_umsatz = umsatz_ist + outstanding + angebots_anteil
+	absehbarer_umsatz = umsatz_ist + outstanding_jahr + angebots_anteil
 
-	reale_umsatzluecke = umsatz_ist + outstanding - umsatz_soll
+	reale_umsatzluecke = umsatz_ist + outstanding_jahr - umsatz_soll
 	vorr_umsatzluecke = absehbarer_umsatz - umsatz_soll
 
 	empty = {"einnahmen_brutto": 0, "ausgaben_brutto": 0, "saldo_brutto": 0, "liq_brutto": 0,
@@ -343,6 +376,8 @@ def get_data(filters, columns):
 		dict(empty, monat="Tage ohne Zahlungseingang",                       jahr="", prognose_eur=0,                                          prognose_zahl=tage_ohne),
 		dict(empty, monat="Monate ohne Zahlungseingang",                     jahr="", prognose_eur=0,                                          prognose_zahl=monate_ohne),
 		dict(empty, monat="Outstanding bestehende Auftraege",                jahr="", prognose_eur=outstanding,                                prognose_zahl=0),
+		dict(empty, monat="Outstanding bis 31.12." + current_year,           jahr="", prognose_eur=outstanding_jahr,                           prognose_zahl=0),
+		dict(empty, monat="Outstanding Folgejahre (nach 31.12." + current_year + ")", jahr="", prognose_eur=outstanding_spaeter,                prognose_zahl=0),
 		dict(empty, monat="Reale Umsatzluecke (Ist+Out-Soll)",               jahr="", prognose_eur=reale_umsatzluecke,                         prognose_zahl=0),
 		dict(empty, monat="---",                                              jahr="", prognose_eur=0,                                          prognose_zahl=0),
 		dict(empty, monat="Liegende Angebote",                               jahr="", prognose_eur=liegende_angebote,                          prognose_zahl=0),
