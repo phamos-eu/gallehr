@@ -1,18 +1,16 @@
-"""Mirrors approved Leave Applications into a Nextcloud calendar via CalDAV (see Nextcloud Calendar Settings)."""
+"""Mirrors approved Leave Applications into a Nextcloud calendar via CalDAV (see Nextcloud Settings)."""
 
 import datetime
 from urllib.parse import quote, urljoin
 from xml.etree import ElementTree
 
 import frappe
-import requests
 from frappe import _
 from frappe.utils import getdate
-from frappe.utils.password import get_decrypted_password
 
-SETTINGS = "Nextcloud Calendar Settings"
+from gallehr.nextcloud_client import SETTINGS, TIMEOUT, base_url, session
+
 NEUTRAL_TITLE = "Abwesend"
-TIMEOUT = 30
 NS = {"d": "DAV:", "cal": "urn:ietf:params:xml:ns:caldav"}
 PROPFIND_BODY = (
 	'<?xml version="1.0" encoding="utf-8"?>'
@@ -41,8 +39,8 @@ def sync_leave_event(leave_name):
 		settings = frappe.get_single(SETTINGS)
 		if not settings.enabled:
 			return
-		session = caldav_session(settings)
-		event_url = urljoin(base_url(settings), find_calendar_href(session, settings)) + event_uid(leave_name) + ".ics"
+		dav = session(settings)
+		event_url = urljoin(base_url(settings), find_calendar_href(dav, settings)) + event_uid(leave_name) + ".ics"
 		leave = frappe.db.get_value(
 			"Leave Application",
 			leave_name,
@@ -50,7 +48,7 @@ def sync_leave_event(leave_name):
 			as_dict=True,
 		)
 		if leave and leave.docstatus == 1 and leave.status == "Approved":
-			r = session.put(
+			r = dav.put(
 				event_url,
 				data=build_ics(leave_name, leave),
 				headers={"Content-Type": "text/calendar; charset=utf-8"},
@@ -58,7 +56,7 @@ def sync_leave_event(leave_name):
 			)
 			r.raise_for_status()
 		else:
-			r = session.delete(event_url, timeout=TIMEOUT)
+			r = dav.delete(event_url, timeout=TIMEOUT)
 			if r.status_code != 404:
 				r.raise_for_status()
 	except Exception:
@@ -69,40 +67,8 @@ def sync_leave_event(leave_name):
 		)
 
 
-def test_connection():
-	settings = frappe.get_single(SETTINGS)
-	missing = [
-		label
-		for fieldname, label in (("server_url", "Nextcloud URL"), ("username", "Bot Username"), ("calendar_name", "Calendar Name"))
-		if not settings.get(fieldname)
-	]
-	if not get_decrypted_password(SETTINGS, SETTINGS, "app_password", raise_exception=False):
-		missing.append("App Password")
-	if missing:
-		return {"ok": False, "error": _("Please fill in: {0}").format(", ".join(missing))}
-	try:
-		r = propfind_calendars(caldav_session(settings), settings)
-		if r.status_code == 401:
-			return {"ok": False, "error": _("Login rejected (401): check the bot username and the app password.")}
-		r.raise_for_status()
-	except requests.RequestException as e:
-		return {"ok": False, "error": _("Nextcloud not reachable: {0}").format(str(e))}
-	names = [name for name, href in list_calendars(r.content)]
-	return {"ok": settings.calendar_name in names, "calendars": names, "calendar_name": settings.calendar_name}
-
-
-def caldav_session(settings):
-	session = requests.Session()
-	session.auth = (settings.username, get_decrypted_password(SETTINGS, SETTINGS, "app_password"))
-	return session
-
-
-def base_url(settings):
-	return settings.server_url.rstrip("/") + "/"
-
-
-def propfind_calendars(session, settings):
-	return session.request(
+def propfind_calendars(dav, settings):
+	return dav.request(
 		"PROPFIND",
 		urljoin(base_url(settings), f"remote.php/dav/calendars/{quote(settings.username)}/"),
 		data=PROPFIND_BODY,
@@ -119,8 +85,8 @@ def list_calendars(xml_bytes):
 	return calendars
 
 
-def find_calendar_href(session, settings):
-	r = propfind_calendars(session, settings)
+def find_calendar_href(dav, settings):
+	r = propfind_calendars(dav, settings)
 	r.raise_for_status()
 	for name, href in list_calendars(r.content):
 		if name == settings.calendar_name:
