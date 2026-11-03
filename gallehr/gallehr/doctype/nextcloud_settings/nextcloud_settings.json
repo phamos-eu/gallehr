@@ -1,0 +1,143 @@
+{
+ "actions": [],
+ "creation": "2026-10-21 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "connection_section",
+  "server_url",
+  "username",
+  "app_password",
+  "connection_column_break",
+  "test_connection",
+  "calendar_section",
+  "enabled",
+  "calendar_name",
+  "calendar_column_break",
+  "employee_filter",
+  "folders_section",
+  "folders_enabled",
+  "folder_root",
+  "folders_column_break",
+  "project_filter"
+ ],
+ "fields": [
+  {
+   "fieldname": "connection_section",
+   "fieldtype": "Section Break",
+   "label": "Connection"
+  },
+  {
+   "description": "Nextcloud base URL including its path, e.g. https://x32.id4net.de/nextcloud",
+   "fieldname": "server_url",
+   "fieldtype": "Data",
+   "label": "Nextcloud URL",
+   "mandatory_depends_on": "eval:doc.enabled || doc.folders_enabled"
+  },
+  {
+   "description": "Nextcloud account the integration acts as, e.g. erpnext.bot. It owns the calendar and the project folders.",
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "label": "Bot Username",
+   "mandatory_depends_on": "eval:doc.enabled || doc.folders_enabled"
+  },
+  {
+   "description": "An app password of the bot account (Nextcloud: Personal settings > Security > Devices & sessions), not its login password.",
+   "fieldname": "app_password",
+   "fieldtype": "Password",
+   "label": "App Password",
+   "mandatory_depends_on": "eval:doc.enabled || doc.folders_enabled"
+  },
+  {
+   "fieldname": "connection_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Checks the saved settings: logs in as the bot, lists the calendars it can see and looks for the project folder root.",
+   "fieldname": "test_connection",
+   "fieldtype": "Button",
+   "label": "Test Connection"
+  },
+  {
+   "fieldname": "calendar_section",
+   "fieldtype": "Section Break",
+   "label": "Leave Calendar"
+  },
+  {
+   "default": "0",
+   "description": "When on, every approved and submitted Leave Application is written to the Nextcloud calendar below, and removed again when it is cancelled or rejected.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Leave Calendar Enabled"
+  },
+  {
+   "description": "Display name of the target calendar, exactly as shown in Nextcloud, e.g. Ulrich & Friends",
+   "fieldname": "calendar_name",
+   "fieldtype": "Data",
+   "label": "Calendar Name",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "calendar_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Only sync leave of employees whose name contains this text (e.g. Test while testing). Leave empty to sync everyone.",
+   "fieldname": "employee_filter",
+   "fieldtype": "Data",
+   "label": "Only Employees Containing"
+  },
+  {
+   "fieldname": "folders_section",
+   "fieldtype": "Section Break",
+   "label": "Project Folders"
+  },
+  {
+   "default": "0",
+   "description": "When on, every new Project gets its folder tree (customer folder, Akquisition, project folder with Arbeitsergebnisse, PM, Vertraege) below the folder root. Existing folders are kept, nothing is ever deleted.",
+   "fieldname": "folders_enabled",
+   "fieldtype": "Check",
+   "label": "Project Folders Enabled"
+  },
+  {
+   "default": "ERPNext/Temp-Projektverzeichnisse",
+   "description": "Folder in the bot's Nextcloud files that holds the customer folders. It must exist already (create it once as the bot and share it with the team).",
+   "fieldname": "folder_root",
+   "fieldtype": "Data",
+   "label": "Folder Root",
+   "mandatory_depends_on": "eval:doc.folders_enabled"
+  },
+  {
+   "fieldname": "folders_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Only create folders for projects whose name contains this text (e.g. ZZ-TEST while testing). Leave empty for all projects.",
+   "fieldname": "project_filter",
+   "fieldtype": "Data",
+   "label": "Only Projects Containing"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-10-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gallehr",
+ "name": "Nextcloud Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

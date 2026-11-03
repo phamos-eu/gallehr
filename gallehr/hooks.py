@@ -9,6 +9,7 @@ app_license = "MIT"
 doctype_js = {
     "Contact": "public/js/contact.js",
     "Leave Application": "public/js/leave_application.js",
+    "Project": "public/js/project.js",
     # "Sales Order": "public/js/sales_order.js",
     "Web Form": "public/js/web_form.js",
 }
@@ -47,6 +48,9 @@ doc_events = {
         "on_submit": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
         "on_update_after_submit": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
         "on_cancel": "gallehr.nextcloud_calendar_sync.on_leave_application_change",
+    },
+    "Project": {
+        "after_insert": "gallehr.nextcloud_project_folders.on_project_insert",
     },
 }
 

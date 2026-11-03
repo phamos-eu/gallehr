@@ -16,3 +16,10 @@ the delivery or service date corresponds to the invoice date.,entspricht das Lie
 Please transfer the invoice amount,Bitte überweisen Sie den Rechnungsbetrag
 quoting the purpose,unter Angabe des Verwendungszwecks,
 to the account below.,auf das unten angegebene Konto.,
+Create Nextcloud Folders,Nextcloud-Ordner anlegen,
+Creating folders in Nextcloud…,Ordner werden in Nextcloud angelegt…,
+Nextcloud Folders,Nextcloud-Ordner,
+"{0} folders created, {1} already existed.","{0} Ordner angelegt, {1} waren schon vorhanden.",
+Project folders are switched off in Nextcloud Settings.,Projektordner sind in den Nextcloud Settings ausgeschaltet.,
+"The project has no customer, the folder name needs the customer number.","Das Projekt hat keinen Kunden, der Ordnername braucht die Kundennummer.",
+Folder {0} does not exist for {1} in Nextcloud.,Der Ordner {0} existiert für {1} in Nextcloud nicht.,
