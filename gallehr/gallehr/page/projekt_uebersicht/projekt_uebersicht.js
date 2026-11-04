@@ -82,7 +82,14 @@ function resolvePeriodRange() {
 		von3.setMonth(von3.getMonth() - 3);
 		return { von: isoDate(von3), bis: isoDate(today) };
 	}
-	// jahresbeginn (Default)
+	if (periode === '12m') {
+		// Standard beim Oeffnen der Seite (Wunsch 04.11.2026): gleitendes Jahr bis
+		// heute, gleiche Konvention wie "Letzte 3 Monate".
+		var von12 = new Date(today);
+		von12.setMonth(von12.getMonth() - 12);
+		return { von: isoDate(von12), bis: isoDate(today) };
+	}
+	// jahresbeginn
 	return { von: today.getFullYear() + '-01-01', bis: isoDate(today) };
 }
 
