@@ -320,7 +320,6 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		var anteil = row.anteil !== undefined ? row.anteil : row[3];
 		var key = row.key !== undefined ? row.key : row[4];
 		var hinweis = row.kontinuierlich_hinweis !== undefined ? row.kontinuierlich_hinweis : row[5];
-		var ueberHinweis = row.ueberfakturiert_hinweis !== undefined ? row.ueberfakturiert_hinweis : row[6];
 		var ohneAuftragHinweis = row.ohne_auftrag_hinweis !== undefined ? row.ohne_auftrag_hinweis : row[7];
 		var pctWidth = Math.max(Math.min(anteil, 100), 0);
 
@@ -348,13 +347,9 @@ function renderView(prefix, rowsForView, color, reportLink) {
 		if (hinweis) {
 			nameHtml += '<span class="po-spill-badge" title="' + frappe.utils.escape_html(hinweis) + '">kontinuierlich</span>';
 		}
-		// "ueberfakturiert"-Badge -- unabhaengig vom kontinuierlich-Badge, beide
-		// koennen gleichzeitig erscheinen (report_script prueft das getrennt).
-		// Ausgeloest durch Shell-Deutschland-K068 (PROJ-0498), Rueckmeldung
-		// 10.09.2026: siehe Mockup mockup_ueberfakturiert.html.
-		if (ueberHinweis) {
-			nameHtml += '<span class="po-over-badge" title="' + frappe.utils.escape_html(ueberHinweis) + '">überfakturiert</span>';
-		}
+		// Kein "ueberfakturiert"-Schild mehr auf Projektebene (Entscheidung 10.11.2026):
+		// der Report liefert ueberfakturiert_hinweis weiter mit (Spalte im vollen
+		// Report), die Seite zeigt es bewusst nicht an.
 		// "ohne Auftrag"-Badge -- eigener Fall, kein Ueberfakturiert: Live-
 		// Stichprobe 10.09.2026 zeigte, fast die Haelfte der Ueberfakturiert-
 		// Treffer hatten in Wahrheit gar keinen Sales Order (Auftragswert 0),
