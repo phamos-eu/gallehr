@@ -1,7 +1,9 @@
 """Creates the project folder tree in Nextcloud via WebDAV when a Project is created (see Nextcloud Settings).
 
-Replaces the x22 shell scripts projects.sh/projects2.sh (project.log watcher + davfs mkdir on ownCloud);
-folder names are kept exactly as those scripts made them, so old and new folders look the same.
+Replaces the x22 shell scripts projects.sh/projects2.sh (project.log watcher + davfs mkdir on ownCloud).
+Names are pieced together by the system, so they are right even if a project name ignores the convention
+"Kurzname | Projektname": one top folder Kurzname-Projektname, in it Kurzname-Akquisition (filled by hand) and the
+project folder Kurzname-Projektname-<Kunden-Nr>-<Projekt-Nr> with the subfolders of the old scripts.
 """
 
 import frappe
@@ -39,8 +41,7 @@ def on_project_insert(doc, method=None):
 
 def create_project_folders(project):
 	try:
-		if frappe.db.get_value("Project", project, "customer"):
-			create_folders(project)
+		create_folders(project)
 	except Exception:
 		frappe.log_error(title="Nextcloud Projektordner", reference_doctype="Project", reference_name=project)
 
@@ -51,8 +52,6 @@ def create_folders_now(project):
 	frappe.has_permission("Project", "write", project, throw=True)
 	if not frappe.get_cached_doc(SETTINGS).folders_enabled:
 		frappe.throw(_("Project folders are switched off in Nextcloud Settings."))
-	if not frappe.db.get_value("Project", project, "customer"):
-		frappe.throw(_("The project has no customer, the folder name needs the customer number."))
 	return create_folders(project)
 
 
@@ -67,7 +66,7 @@ def create_folders(project):
 
 	p = frappe.db.get_value("Project", project, ["project_name", "customer"], as_dict=True)
 	result = {"created": 0, "existing": 0}
-	for path in folder_paths(project, p.project_name, p.customer, client_code(p.customer)):
+	for path in folder_paths(project, p.project_name, p.customer, kurzname(p.project_name, p.customer)):
 		r = dav.request("MKCOL", files_url(settings, root + path), timeout=TIMEOUT)
 		if r.status_code == 405:
 			result["existing"] += 1
@@ -75,16 +74,6 @@ def create_folders(project):
 		r.raise_for_status()
 		result["created"] += 1
 	return result
-
-
-def client_code(customer):
-	"""<clientcodes> of the old project.log line: the customer's "Kurzname" (custom field shortname, only in the
-	site database). Without one the customer name is used, instead of a folder called "-<number>"."""
-	if frappe.get_meta("Customer").has_field("shortname"):
-		code = frappe.db.get_value("Customer", customer, "shortname")
-		if code:
-			return code
-	return frappe.db.get_value("Customer", customer, "customer_name")
 
 
 def root_segments(settings):
@@ -96,16 +85,49 @@ def clean(name):
 	return str(name or "").strip().replace("/", "-").replace("\\", "-")
 
 
+def slug(name):
+	"""Folder-safe form: " | " and "|" become "-" (Windows can't store "|"), spaces become "_"."""
+	return clean(name).replace(" | ", "-").replace("|", "-").replace(" ", "_")
+
+
+def kurzname(project_name, customer=None):
+	"""The customer's field "Kurzname" (shortname, Settings tab, mandatory); without one the part before "|" of
+	"Kurzname | Projektname"; without that the customer name. Since 2025 the typed part equals the field in almost
+	every project; where it differs, the mandatory field wins."""
+	if customer and frappe.get_meta("Customer").has_field("shortname"):
+		code = clean(frappe.db.get_value("Customer", customer, "shortname"))
+		if code:
+			return code
+	name = clean(project_name)
+	if "|" in name and name.split("|", 1)[0].strip():
+		return name.split("|", 1)[0].strip()
+	return clean(frappe.db.get_value("Customer", customer, "customer_name")) if customer else ""
+
+
+def project_part(project_name, code):
+	"""The project's own name: the part after the first "|" (the part before it if nothing follows), without a
+	leading Kurzname (only as a whole word), so the Kurzname is never doubled."""
+	name = clean(project_name)
+	if "|" in name:
+		before, after = name.split("|", 1)
+		name = after.strip() or before.strip()
+	rest = name[len(code) :]
+	if code and name.lower().startswith(code.lower()) and (not rest or rest[0] in " -_|"):
+		name = rest.lstrip(" -_|")
+	return name
+
+
 def folder_paths(project, project_name, customer, code):
-	"""All folders in creation order, parents first, as lists of names below the root."""
+	"""All folders in creation order, parents first, as lists of names below the root. The customer number is added
+	to the project folder when the project has a customer."""
 	nr = project.replace("PROJ-", "")
-	code = clean(code)
-	client = f"{code}-{customer}"
-	project_dir = [client, clean(project_name).replace(" | ", "-").replace(" ", "_") + f"-{customer}-{nr}"]
+	part = project_part(project_name, code)
+	base = slug(f"{code}-{part}" if code and part else code or part)
+	project_dir = [base, f"{base}-{slug(customer)}-{nr}" if customer else f"{base}-{nr}"]
 	work_results = [*project_dir, f"Arbeitsergebnisse-{nr}"]
 	return [
-		[client],
-		[client, f"{code}-Akquisition"],
+		[base],
+		[base, f"{slug(code or part)}-Akquisition"],
 		project_dir,
 		work_results,
 		[*project_dir, f"PM-{nr}"],

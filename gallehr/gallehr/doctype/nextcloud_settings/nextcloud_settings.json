@@ -95,14 +95,14 @@
   },
   {
    "default": "0",
-   "description": "When on, every new Project gets its folder tree (customer folder, Akquisition, project folder with Arbeitsergebnisse, PM, Vertraege) below the folder root. Existing folders are kept, nothing is ever deleted.",
+   "description": "When on, every new Project gets its folder tree below the folder root: a top folder Kurzname-Projektname (Kurzname from the customer's Settings tab, project part from the project name \"Kurzname | Projektname\") with the Akquisition folder and the project folder (Arbeitsergebnisse, PM, Vertraege). Existing folders are kept, nothing is ever deleted.",
    "fieldname": "folders_enabled",
    "fieldtype": "Check",
    "label": "Project Folders Enabled"
   },
   {
    "default": "ERPNext/Temp-Projektverzeichnisse",
-   "description": "Folder in the bot's Nextcloud files that holds the customer folders. It must exist already (create it once as the bot and share it with the team).",
+   "description": "Folder in the bot's Nextcloud files that holds the project folders. It must exist already (create it once as the bot and share it with the team).",
    "fieldname": "folder_root",
    "fieldtype": "Data",
    "label": "Folder Root",
