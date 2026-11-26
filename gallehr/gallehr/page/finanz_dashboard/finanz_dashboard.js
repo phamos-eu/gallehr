@@ -16,14 +16,27 @@ frappe.pages['finanz-dashboard'].on_page_load = function (wrapper) {
 		window.fd_chart_js_loaded = true;
 		if (window.fd_chart_data) {
 			buildGVChart(window.fd_chart_data.labels, window.fd_chart_data.einnahmen, window.fd_chart_data.ausgaben, window.fd_chart_data.liquiditaet);
-			buildBurnChart(window.fd_chart_data.labels, window.fd_chart_data.burnrate);
+			buildBurnChart(window.fd_chart_data.burnLabels, window.fd_chart_data.burnrate);
 		}
 	};
 	document.head.appendChild(script);
 
+	setYearOptions();
 	bindEvents();
 	loadSnapshots(function () { loadAll(); });
 };
+
+// Jahr-Auswahl wie der Zeitraum auf der Projekt Übersicht: Vorjahr, aktuelles
+// Jahr (vorausgewaehlt), Folgejahr -- aus dem heutigen Datum, damit die Seite
+// nicht jedes Jahr von Hand angepasst werden muss.
+function setYearOptions() {
+	var y = new Date().getFullYear();
+	var $sel = $('#fd-jahr').empty();
+	[y - 1, y, y + 1].forEach(function (j) {
+		$sel.append($('<option>').val(String(j)).text(String(j)));
+	});
+	$sel.val(String(y));
+}
 
 function applyFilters() {
 	var aktuell = parseFloat($('#fd-aktuell').val());
@@ -110,7 +123,7 @@ function resolveBurnrateRange() {
 function getFilters() {
 	var burnrate = resolveBurnrateRange();
 	return {
-		jahr: $('#fd-jahr').val() || '2026',
+		jahr: $('#fd-jahr').val() || String(new Date().getFullYear()),
 		aktuell_liquiditaet: parseDE($('#fd-aktuell').val()) || 0,
 		start_liquiditaet: parseDE($('#fd-liq').val()) || 0,
 		angebotsumwandlung: parseDE($('#fd-umwandlung').val()) || 30,
@@ -237,6 +250,23 @@ function processReport(rows, jahr) {
 	var deckungsgrad = soll > 0 ? (ist + outstanding) / soll * 100 : 0;
 	var deckungClass = deckungsgrad >= 100 ? 'fd-color-green' : 'fd-color-red';
 
+	// Ohne Ausgaben im Burnrate-Zeitraum (typisch: ein Jahr, das gerade erst
+	// begonnen hat, mit "leer = seit Jahresbeginn") ist die Burnrate 0 und damit
+	// auch Soll (= Burnrate/Tag * 365). Dann sind Soll, Luecken, Deckungsgrad,
+	// Burnrate und Tage ohne Zahlung nicht berechenbar -- "0 %" in Rot oder
+	// "0 Tage" wuerde einen Alarm vortaeuschen, also "—" plus Hinweis.
+	var ohneBurnrate = !(burnTag > 0);
+	var NA = '—';
+	var naClass = 'fd-color-muted';
+	var hint = '';
+	if (ohneBurnrate) {
+		var f = getFilters();
+		hint = '<div class="fd-hint">' + (f.burnrate_von
+			? 'Im gewählten Burnrate-Zeitraum gibt es keine Ausgaben – Soll, Lücken, Deckungsgrad und Burnrate lassen sich nicht berechnen. Bitte einen anderen Zeitraum wählen.'
+			: 'Für ' + frappe.utils.escape_html(jahr) + ' gibt es noch keine Ausgaben (Bankbuchungen) – Soll, Lücken, Deckungsgrad und Burnrate lassen sich noch nicht berechnen. Unter „Zeitraum für Burnrate“ z. B. „Letzte 12 Monate“ wählen.') +
+			'</div>';
+	}
+
 	// Umsatz box: 4 rows
 	// Every value links into the Finanz Dashboard report carrying the *current*
 	// filter values, so the report reproduces exactly the number shown here.
@@ -246,10 +276,11 @@ function processReport(rows, jahr) {
 	var rpLink = buildReportLink();
 	$('#fd-umsatz-rows').html(
 		fdRow('Umsatz Ist (YTD Netto)', fmt(ist), 'fd-color-green', rpLink) +
-		fdRow('Umsatz Soll (Netto/Jahr)', fmt(soll), 'fd-color-purple', rpLink) +
-		fdRow('Reale Umsatzlücke', fmt(realLuecke), realClass, rpLink) +
-		fdRowTotal('Vorr. Umsatzlücke', fmt(vorrLuecke), vorrClass, rpLink) +
-		fdRowTotal('Deckungsgrad', fmtN(deckungsgrad, 0) + ' %', deckungClass, rpLink)
+		fdRow('Umsatz Soll (Netto/Jahr)', ohneBurnrate ? NA : fmt(soll), ohneBurnrate ? naClass : 'fd-color-purple', rpLink) +
+		fdRow('Reale Umsatzlücke', ohneBurnrate ? NA : fmt(realLuecke), ohneBurnrate ? naClass : realClass, rpLink) +
+		fdRowTotal('Vorr. Umsatzlücke', ohneBurnrate ? NA : fmt(vorrLuecke), ohneBurnrate ? naClass : vorrClass, rpLink) +
+		fdRowTotal('Deckungsgrad', ohneBurnrate ? NA : fmtN(deckungsgrad, 0) + ' %', ohneBurnrate ? naClass : deckungClass, rpLink) +
+		hint
 	);
 
 	// Liquidität box — Burnrate in Brutto like Excel
@@ -261,9 +292,9 @@ function processReport(rows, jahr) {
 		fdRow('Liquidität aktuell (Bank/berechnet)', fmt(liqBrutto), 'fd-color-blue', rpLink) +
 		fdRow('Snapshot (Standard)', fmt(snapLiq), 'fd-color-blue', snapLink) +
 		fdRow('Differenz (Bank − Snapshot)', deltaStr, deltaClass) +
-		fdRow('Tage ohne Zahlung', fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', 'fd-color-amber') +
-		fdRow('Burnrate / Tag (Brutto)', fmt(burnTag, 2), 'fd-color-purple', rpLink) +
-		fdRowTotal('Burnrate / Monat (Brutto)', fmt(burnM), 'fd-color-purple', rpLink)
+		fdRow('Tage ohne Zahlung', ohneBurnrate ? NA : fmtN(tage, 0) + ' Tage / ' + fmtN(monate, 1) + ' Monate', ohneBurnrate ? naClass : 'fd-color-amber') +
+		fdRow('Burnrate / Tag (Brutto)', ohneBurnrate ? NA : fmt(burnTag, 2), ohneBurnrate ? naClass : 'fd-color-purple', rpLink) +
+		fdRowTotal('Burnrate / Monat (Brutto)', ohneBurnrate ? NA : fmt(burnM), ohneBurnrate ? naClass : 'fd-color-purple', rpLink)
 	);
 
 	// G&V chart: all months with data including current (partial) month
@@ -290,11 +321,23 @@ function processReport(rows, jahr) {
 	var burnLabels = burnMonths.map(function (r) { return r.monat !== undefined ? r.monat : r[0]; });
 	var burnrate = burnMonths.map(function (r) { return r.burnrate_m !== undefined ? r.burnrate_m : (r[12] || 0); });
 
-	window.fd_chart_data = { labels: gvLabels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnrate: burnrate };
+	// Leere Charts zeigen sonst nur eine 0/1-Achse -- stattdessen ein Hinweis.
+	setChartEmpty('fd-chart-gv', !gvLabels.length, 'Noch keine Buchungen in ' + jahr);
+	setChartEmpty('fd-chart-burn', !burnLabels.length, 'Noch kein abgeschlossener Monat in ' + jahr);
+
+	window.fd_chart_data = { labels: gvLabels, einnahmen: einnahmen, ausgaben: ausgaben, liquiditaet: liquiditaet, burnLabels: burnLabels, burnrate: burnrate };
 	if (window.fd_chart_js_loaded) {
 		buildGVChart(gvLabels, einnahmen, ausgaben, liquiditaet);
 		buildBurnChart(burnLabels, burnrate);
 	}
+}
+
+function setChartEmpty(canvasId, isEmpty, text) {
+	var $canvas = $('#' + canvasId);
+	var $wrap = $canvas.parent();
+	$wrap.find('.fd-chart-empty').remove();
+	$canvas.css('visibility', isEmpty ? 'hidden' : '');
+	if (isEmpty) $wrap.append($('<div class="fd-chart-empty">').text(text));
 }
 
 function fdRow(label, val, valClass, link) {

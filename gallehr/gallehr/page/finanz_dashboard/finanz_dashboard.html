@@ -9,11 +9,9 @@
   <div class="fd-filters">
     <div class="fd-fg">
       <label>Jahr</label>
-      <select id="fd-jahr" class="form-control form-control-sm">
-        <option value="2024">2024</option>
-        <option value="2025">2025</option>
-        <option value="2026" selected>2026</option>
-      </select>
+      <!-- Optionen setzt setYearOptions() beim Laden: Vorjahr, aktuelles Jahr,
+           Folgejahr -- wie der Zeitraum auf der Projekt Übersicht. -->
+      <select id="fd-jahr" class="form-control form-control-sm"></select>
     </div>
     <div class="fd-fg fd-fg-separator">
       <label>Aktueller Kontostand (Brutto)</label>

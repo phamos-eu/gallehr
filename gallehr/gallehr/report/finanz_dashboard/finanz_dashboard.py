@@ -40,7 +40,7 @@ def parse_de_float(val):
 
 def get_data(filters, columns):
 	filters = filters or {}
-	current_year = str(filters.get("jahr") or "2026")
+	current_year = str(filters.get("jahr") or frappe.utils.getdate().year)
 	angebotsumwandlung = float(filters.get("angebotsumwandlung") or 30)
 
 	# Burnrate-Zeitraum: replaces the old manual Burnrate/Tag override. If both
